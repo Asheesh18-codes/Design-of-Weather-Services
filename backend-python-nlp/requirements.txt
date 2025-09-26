@@ -12,8 +12,8 @@ python-dotenv==1.0.0
 
 # Machine Learning and NLP
 transformers==4.36.0
-torch==2.1.0
-tokenizers==0.15.0
+torch==2.2.0
+tokenizers==0.19.1
 
 # HuggingFace API integration
 datasets==2.14.6
