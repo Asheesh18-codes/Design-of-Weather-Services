@@ -1,36 +1,370 @@
 // Aviation data parsers for METAR, TAF, NOTAM, PIREP, SIGMET
-// Returns human-readable summaries for pilots
+// Returns comprehensive human-readable summaries for pilots
 
 export function parseMetar(metar) {
   if (!metar) return null;
-  // Simple regex-based parse for demo
-  const match = metar.match(/METAR\s+(\w{4})\s+(\d{6}Z)\s+(\d{3})(\d{2})KT\s+(\d+)SM\s+(.*)\s(\d{2})\/(\d{2})\sA(\d{4})/);
-  if (!match) return { raw: metar, summary: "Unable to parse METAR." };
-  return {
-    raw: metar,
-    summary: `Station: ${match[1]}, Time: ${match[2]}, Wind: ${match[3]}° at ${match[4]}kt, Visibility: ${match[5]}SM, Clouds: ${match[6]}, Temp/Dew: ${match[7]}/${match[8]}°C, Pressure: ${match[9]}`
-  };
+  
+  try {
+    // Extract station identifier
+    const stationMatch = metar.match(/(?:METAR\s+)?([A-Z]{4})\s+/);
+    const station = stationMatch ? stationMatch[1] : "Unknown";
+    
+    // Extract observation time
+    const timeMatch = metar.match(/(\d{6}Z)/);
+    const obsTime = timeMatch ? timeMatch[1] : "";
+    
+    // Extract wind information
+    let windInfo = "Calm";
+    const windMatch = metar.match(/(\d{3})(\d{2,3})(?:G(\d{2,3}))?KT/);
+    if (windMatch) {
+      const direction = windMatch[1];
+      const speed = windMatch[2];
+      const gusts = windMatch[3];
+      windInfo = `${direction}° at ${speed} knots${gusts ? ` gusting to ${gusts} knots` : ""}`;
+    }
+    
+    // Extract visibility
+    let visibility = "Unknown";
+    const visMatch = metar.match(/(\d{1,2})SM|(\d{4})|P6SM|M1\/4SM/);
+    if (visMatch) {
+      if (visMatch[1]) visibility = `${visMatch[1]} statute miles`;
+      else if (visMatch[2]) visibility = `${visMatch[2]} meters`;
+      else if (metar.includes("P6SM")) visibility = "Greater than 6 statute miles";
+      else if (metar.includes("M1/4SM")) visibility = "Less than 1/4 statute mile";
+    }
+    
+    // Extract weather phenomena
+    let weather = [];
+    const weatherPatterns = [
+      { pattern: /-?RA/, description: "Rain" },
+      { pattern: /-?SN/, description: "Snow" },
+      { pattern: /-?DZ/, description: "Drizzle" },
+      { pattern: /FG/, description: "Fog" },
+      { pattern: /BR/, description: "Mist" },
+      { pattern: /TS/, description: "Thunderstorm" },
+      { pattern: /SH/, description: "Showers" }
+    ];
+    
+    weatherPatterns.forEach(({ pattern, description }) => {
+      const match = metar.match(pattern);
+      if (match) {
+        const intensity = match[0].startsWith('-') ? 'Light ' : 
+                         match[0].startsWith('+') ? 'Heavy ' : '';
+        weather.push(intensity + description);
+      }
+    });
+    
+    // Extract cloud information
+    let clouds = [];
+    const cloudMatches = metar.match(/(CLR|SKC|FEW|SCT|BKN|OVC)(\d{3})?/g);
+    if (cloudMatches) {
+      cloudMatches.forEach(cloud => {
+        const cloudMatch = cloud.match(/(CLR|SKC|FEW|SCT|BKN|OVC)(\d{3})?/);
+        if (cloudMatch) {
+          const coverage = {
+            'CLR': 'Clear',
+            'SKC': 'Sky Clear',
+            'FEW': 'Few',
+            'SCT': 'Scattered',
+            'BKN': 'Broken',
+            'OVC': 'Overcast'
+          }[cloudMatch[1]] || cloudMatch[1];
+          
+          const altitude = cloudMatch[2] ? ` at ${parseInt(cloudMatch[2]) * 100} feet` : '';
+          clouds.push(coverage + altitude);
+        }
+      });
+    }
+    
+    // Extract temperature and dewpoint
+    let temperature = "Unknown", dewpoint = "Unknown";
+    const tempMatch = metar.match(/\s(M?\d{2})\/(M?\d{2})\s/);
+    if (tempMatch) {
+      temperature = tempMatch[1].replace('M', '-') + "°C";
+      dewpoint = tempMatch[2].replace('M', '-') + "°C";
+    }
+    
+    // Extract altimeter setting
+    let altimeter = "Unknown";
+    const altMatch = metar.match(/A(\d{4})|Q(\d{4})/);
+    if (altMatch) {
+      if (altMatch[1]) {
+        const inHg = (parseInt(altMatch[1]) / 100).toFixed(2);
+        altimeter = `${inHg} inches Hg`;
+      } else if (altMatch[2]) {
+        altimeter = `${altMatch[2]} millibars`;
+      }
+    }
+    
+    // Determine flight conditions
+    const vis = parseFloat(metar.match(/(\d{1,2})SM/)?.[1]) || 10;
+    const hasBrokenOvercast = metar.match(/(BKN|OVC)(\d{3})/);
+    const ceilingHeight = hasBrokenOvercast ? parseInt(hasBrokenOvercast[2]) * 100 : 10000;
+    
+    let flightRules = "VFR";
+    if (vis < 3 || ceilingHeight < 1000) flightRules = "IFR";
+    else if (vis < 5 || ceilingHeight < 3000) flightRules = "MVFR";
+    
+    return {
+      raw: metar,
+      parsed: {
+        station,
+        observationTime: obsTime,
+        wind: windInfo,
+        visibility,
+        weather: weather.length > 0 ? weather.join(", ") : "No significant weather",
+        clouds: clouds.length > 0 ? clouds.join(", ") : "No significant clouds",
+        temperature,
+        dewpoint,
+        altimeter,
+        flightRules
+      },
+      summary: `${station}: ${flightRules} conditions, ${temperature}/${dewpoint}, Wind: ${windInfo}, Visibility: ${visibility}, ${clouds.join(", ") || "Clear skies"}`
+    };
+  } catch (error) {
+    return {
+      raw: metar,
+      summary: "Unable to parse METAR - " + error.message,
+      parsed: { error: "Parsing failed" }
+    };
+  }
 }
 
 export function parseTaf(taf) {
   if (!taf) return null;
-  // Simple parse: split lines, extract periods and conditions
-  const lines = taf.split(/\n|\r/).filter(Boolean);
-  return {
-    raw: taf,
-    summary: lines.map(line => line.replace(/TAF\s+|FM|\s+/g, " ")).join(" ")
-  };
+  
+  try {
+    // Extract station identifier
+    const stationMatch = taf.match(/TAF\s+([A-Z]{4})\s+/);
+    const station = stationMatch ? stationMatch[1] : "Unknown";
+    
+    // Extract issuance time
+    const timeMatch = taf.match(/(\d{6}Z)/);
+    const issueTime = timeMatch ? timeMatch[1] : "";
+    
+    // Extract valid period
+    const validMatch = taf.match(/(\d{4})\/(\d{4})/);
+    const validPeriod = validMatch ? `${validMatch[1]} to ${validMatch[2]}` : "";
+    
+    // Parse forecast periods (including FM periods)
+    const periods = [];
+    const lines = taf.split(/\n|\r/).filter(Boolean);
+    
+    lines.forEach(line => {
+      // Skip TAF header line
+      if (line.includes('TAF')) return;
+      
+      // Check for change indicators
+      let changeType = "Base Forecast";
+      if (line.includes('FM')) changeType = "Change From";
+      if (line.includes('TEMPO')) changeType = "Temporary";
+      if (line.includes('BECMG')) changeType = "Becoming";
+      
+      // Extract wind for this period
+      let windInfo = "Unknown";
+      const windMatch = line.match(/(\d{3})(\d{2,3})(?:G(\d{2,3}))?KT/);
+      if (windMatch) {
+        const direction = windMatch[1];
+        const speed = windMatch[2];
+        const gusts = windMatch[3];
+        windInfo = `${direction}° at ${speed} knots${gusts ? ` gusting to ${gusts} knots` : ""}`;
+      }
+      
+      // Extract visibility for this period
+      let visibility = "Unknown";
+      const visMatch = line.match(/P6SM|(\d{1,2})SM|(\d{4})/);
+      if (visMatch) {
+        if (line.includes("P6SM")) visibility = "Greater than 6 statute miles";
+        else if (visMatch[1]) visibility = `${visMatch[1]} statute miles`;
+        else if (visMatch[2]) visibility = `${visMatch[2]} meters`;
+      }
+      
+      // Extract clouds for this period
+      let clouds = [];
+      const cloudMatches = line.match(/(FEW|SCT|BKN|OVC)(\d{3})/g);
+      if (cloudMatches) {
+        cloudMatches.forEach(cloud => {
+          const cloudMatch = cloud.match(/(FEW|SCT|BKN|OVC)(\d{3})/);
+          if (cloudMatch) {
+            const coverage = {
+              'FEW': 'Few',
+              'SCT': 'Scattered', 
+              'BKN': 'Broken',
+              'OVC': 'Overcast'
+            }[cloudMatch[1]];
+            const altitude = parseInt(cloudMatch[2]) * 100;
+            clouds.push(`${coverage} at ${altitude} feet`);
+          }
+        });
+      }
+      
+      // Extract weather phenomena
+      let weather = [];
+      const weatherPatterns = [
+        { pattern: /-?RA/, description: "Rain" },
+        { pattern: /-?SN/, description: "Snow" },
+        { pattern: /TS/, description: "Thunderstorms" },
+        { pattern: /SH/, description: "Showers" },
+        { pattern: /FG/, description: "Fog" }
+      ];
+      
+      weatherPatterns.forEach(({ pattern, description }) => {
+        const match = line.match(pattern);
+        if (match) {
+          const intensity = match[0].startsWith('-') ? 'Light ' : 
+                           match[0].startsWith('+') ? 'Heavy ' : '';
+          weather.push(intensity + description);
+        }
+      });
+      
+      if (windInfo !== "Unknown" || visibility !== "Unknown" || clouds.length > 0) {
+        periods.push({
+          type: changeType,
+          wind: windInfo,
+          visibility,
+          weather: weather.length > 0 ? weather.join(", ") : "No significant weather",
+          clouds: clouds.length > 0 ? clouds.join(", ") : "No significant clouds"
+        });
+      }
+    });
+    
+    return {
+      raw: taf,
+      parsed: {
+        station,
+        issueTime,
+        validPeriod,
+        periods
+      },
+      summary: `${station} TAF: Valid ${validPeriod}. ${periods.length} forecast periods with varying conditions from ${periods[0]?.wind || 'unknown wind'} and ${periods[0]?.visibility || 'unknown visibility'}.`
+    };
+    
+  } catch (error) {
+    return {
+      raw: taf,
+      summary: "Unable to parse TAF - " + error.message,
+      parsed: { error: "Parsing failed" }
+    };
+  }
 }
 
 export function parseNotam(notam) {
   if (!notam) return null;
-  // Example: !JFK 09/123 JFK RWY 04L/22R CLSD 2209261200-2209272359
-  const match = notam.match(/!(\w{3,4})\s.*RWY\s(\d{2}[LRC]?\/\d{2}[LRC]?)\sCLSD\s(\d{10})-(\d{10})/);
-  if (!match) return { raw: notam, summary: "Unable to parse NOTAM." };
-  return {
-    raw: notam,
-    summary: `Location: ${match[1]}, Runway: ${match[2]} closed, Valid: ${match[3]} to ${match[4]}`
-  };
+  
+  try {
+    // Extract NOTAM ID
+    const idMatch = notam.match(/([A-Z]\d{4}\/\d{2})/);
+    const notamId = idMatch ? idMatch[1] : "Unknown";
+    
+    // Extract airport code
+    const airportMatch = notam.match(/([A-Z]{4})/);
+    const airport = airportMatch ? airportMatch[1] : "Unknown";
+    
+    // Determine NOTAM category and extract specific details
+    let category = "General";
+    let details = "";
+    let severity = "Medium";
+    
+    if (notam.includes("RWY") || notam.includes("RUNWAY")) {
+      category = "Runway";
+      const runwayMatch = notam.match(/RWY\s+(\d{2}[LRC]?\/\d{2}[LRC]?|\d{2}[LRC]?)/);
+      if (runwayMatch) {
+        details = `Runway ${runwayMatch[1]}`;
+        if (notam.includes("CLSD") || notam.includes("CLOSED")) {
+          details += " - CLOSED";
+          severity = "High";
+        } else if (notam.includes("CONST") || notam.includes("CONSTRUCTION")) {
+          details += " - Construction work";
+          severity = "High";
+        }
+      }
+    } else if (notam.includes("TWY") || notam.includes("TAXIWAY")) {
+      category = "Taxiway";
+      const taxiwayMatch = notam.match(/TWY\s+([A-Z]\d?)/);
+      if (taxiwayMatch) {
+        details = `Taxiway ${taxiwayMatch[1]}`;
+        if (notam.includes("CLSD") || notam.includes("CLOSED")) {
+          details += " - CLOSED";
+          severity = "Medium";
+        }
+      }
+    } else if (notam.includes("ILS") || notam.includes("NAV")) {
+      category = "Navigation";
+      if (notam.includes("ILS")) {
+        const ilsMatch = notam.match(/ILS\s+RWY\s+(\d{2}[LRC]?)/);
+        if (ilsMatch) {
+          details = `ILS Runway ${ilsMatch[1]}`;
+        } else {
+          details = "ILS System";
+        }
+        if (notam.includes("U/S") || notam.includes("UNSERVICEABLE")) {
+          details += " - OUT OF SERVICE";
+          severity = "High";
+        }
+      }
+    } else if (notam.includes("APRON") || notam.includes("RAMP")) {
+      category = "Ground Operations";
+      details = "Apron/Ramp area";
+    } else if (notam.includes("LIGHTING") || notam.includes("LGT")) {
+      category = "Lighting";
+      details = "Airport lighting system";
+    }
+    
+    // Extract effective dates
+    let effectiveDate = "";
+    let expiryDate = "";
+    const dateMatch = notam.match(/(\d{10})-(\d{10})/);
+    if (dateMatch) {
+      const startDate = dateMatch[1];
+      const endDate = dateMatch[2];
+      
+      // Parse YYMMDDTTTT format
+      const startYear = "20" + startDate.substr(0, 2);
+      const startMonth = startDate.substr(2, 2);
+      const startDay = startDate.substr(4, 2);
+      const startTime = startDate.substr(6, 4);
+      
+      const endYear = "20" + endDate.substr(0, 2);
+      const endMonth = endDate.substr(2, 2);
+      const endDay = endDate.substr(4, 2);
+      const endTime = endDate.substr(6, 4);
+      
+      effectiveDate = `${startMonth}/${startDay}/${startYear} ${startTime.substr(0,2)}:${startTime.substr(2,2)}Z`;
+      expiryDate = `${endMonth}/${endDay}/${endYear} ${endTime.substr(0,2)}:${endTime.substr(2,2)}Z`;
+    }
+    
+    // Extract additional context
+    let additionalInfo = "";
+    if (notam.includes("DUE") || notam.includes("CONST")) {
+      additionalInfo = "Due to construction/maintenance";
+    } else if (notam.includes("OBST")) {
+      additionalInfo = "Due to obstruction";
+    } else if (notam.includes("WX") || notam.includes("WEATHER")) {
+      additionalInfo = "Due to weather conditions";
+    }
+    
+    return {
+      raw: notam,
+      parsed: {
+        id: notamId,
+        airport,
+        category,
+        details,
+        severity,
+        effectiveDate,
+        expiryDate,
+        additionalInfo
+      },
+      summary: `${airport} NOTAM ${notamId}: ${category} - ${details}. ${severity} impact. Effective: ${effectiveDate} to ${expiryDate}. ${additionalInfo}`
+    };
+    
+  } catch (error) {
+    return {
+      raw: notam,
+      summary: "Unable to parse NOTAM - " + error.message,
+      parsed: { error: "Parsing failed" }
+    };
+  }
 }
 
 export function parsePirep(pirep) {

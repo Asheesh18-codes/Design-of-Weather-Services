@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import FlightForm from "./components/FlightForm";
-import { parseMetar, parseTaf, parseNotam, parsePirep, parseSigmet } from "./services/aviationParsers";
+import { parseMetar, parseTaf, parseNotam } from "./services/aviationParsers";
 import MapView from "./components/MapView";
-import { flightPlanAPI } from "./services/api";
 import "./styles.css";
 
 // Utility functions
@@ -69,13 +68,77 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const res = await flightPlanAPI.generateWaypoints(payload);
-      setResult(res);
+      // Get airport coordinates
+      const originCoords = getAirportCoordinates(payload.origin.icao);
+      const destCoords = getAirportCoordinates(payload.destination.icao);
+      
+      // Create a result object from the form payload
+      const formResult = {
+        product: "FLIGHT_BRIEFING",
+        origin: payload.origin,
+        destination: payload.destination,
+        enroute: payload.enroute,
+        route: {
+          origin: { 
+            icao: payload.origin.icao, 
+            lat: originCoords?.lat || 0, 
+            lon: originCoords?.lon || 0 
+          },
+          destination: { 
+            icao: payload.destination.icao, 
+            lat: destCoords?.lat || 0, 
+            lon: destCoords?.lon || 0 
+          }
+        },
+        summary: `Flight briefing from ${payload.origin.icao} to ${payload.destination.icao}`,
+        category: determineSeverity(payload), // Determine based on weather conditions
+        parsed: {
+          station: payload.origin.icao,
+          icao: payload.origin.icao,
+          lat: originCoords?.lat || 0,
+          lon: originCoords?.lon || 0
+        }
+      };
+      
+      console.log('Form Result:', formResult); // Debug log
+      setResult(formResult);
     } catch (err) {
-      setError(err?.message || "Failed to generate flight plan");
+      console.error('Submit error:', err); // Debug log
+      setError(err?.message || "Failed to generate flight briefing");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to determine severity based on weather conditions
+  const determineSeverity = (payload) => {
+    // Check for severe weather indicators
+    const depMetar = payload.origin?.metar || '';
+    const arrMetar = payload.destination?.metar || '';
+    const sigmets = payload.enroute?.sigmets || '';
+    
+    // Look for severe conditions
+    if (depMetar.includes('TS') || arrMetar.includes('TS') || sigmets.includes('severe')) {
+      return 'Severe';
+    }
+    // Look for significant conditions  
+    if (depMetar.includes('-RA') || arrMetar.includes('-RA') || depMetar.includes('BKN') || arrMetar.includes('BKN')) {
+      return 'Significant';
+    }
+    // Otherwise clear
+    return 'Clear';
+  };
+
+  // Helper function to get airport coordinates
+  const getAirportCoordinates = (icao) => {
+    const airports = {
+      'KJFK': { lat: 40.6413, lon: -73.7781 },
+      'KSFO': { lat: 37.6213, lon: -122.3790 },
+      'KORD': { lat: 41.9742, lon: -87.9073 },
+      'KDEN': { lat: 39.8561, lon: -104.6737 },
+      'KLAX': { lat: 33.9425, lon: -118.4081 }
+    };
+    return airports[icao] || null;
   };
 
   // ---------- helper getters ----------
@@ -122,13 +185,6 @@ export default function App() {
   })();
   const station = getField("station") ?? getSafe(result, "parsed", "station") ?? getSafe(result, "parsed", "station_id") ?? getSafe(result, "parsed", "icao") ?? "-";
   const obsTime = getField("time") ?? getField("Time") ?? getSafe(result, "parsed", "time") ?? getSafe(result, "parsed", "observation_time") ?? "-";
-
-  // ---------- Aviation Data Parsing ----------
-  const metarSummary = result?.metar ? parseMetar(result.metar) : null;
-  const tafSummary = result?.taf ? parseTaf(result.taf) : null;
-  const notamSummary = result?.notam ? parseNotam(result.notam) : null;
-  const pirepSummary = result?.pirep ? parsePirep(result.pirep) : null;
-  const sigmetSummary = result?.sigmet ? parseSigmet(result.sigmet) : null;
 
   // ---------- UI ----------
   return (
@@ -261,19 +317,91 @@ export default function App() {
                       {depReport === "metar" && (
                         <div className="aviation-summary-block">
                           <div className="aviation-summary-title metar">METAR</div>
-                          <div className="aviation-summary-text">{result?.origin?.metar}</div>
+                          {(() => {
+                            const metarData = result?.origin?.metar ? parseMetar(result.origin.metar) : null;
+                            if (!metarData) return <div className="aviation-summary-text">No METAR data available</div>;
+                            return (
+                              <>
+                                <div className="aviation-summary-text" style={{marginBottom: '8px'}}>
+                                  <strong>Conditions:</strong> {metarData.parsed?.flightRules || 'Unknown'} 
+                                  {metarData.parsed?.temperature && ` | ${metarData.parsed.temperature}/${metarData.parsed.dewpoint}`}
+                                </div>
+                                <div className="aviation-summary-text" style={{marginBottom: '8px'}}>
+                                  <strong>Wind:</strong> {metarData.parsed?.wind || 'Unknown'}<br/>
+                                  <strong>Visibility:</strong> {metarData.parsed?.visibility || 'Unknown'}<br/>
+                                  <strong>Clouds:</strong> {metarData.parsed?.clouds || 'Unknown'}<br/>
+                                  <strong>Weather:</strong> {metarData.parsed?.weather || 'None'}
+                                </div>
+                                <div className="aviation-summary-raw" style={{fontSize: '11px', color: '#666', background: '#f8f9fa', padding: '8px', borderRadius: '4px', fontFamily: 'monospace'}}>
+                                  {metarData.raw}
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                       {depReport === "taf" && (
                         <div className="aviation-summary-block">
                           <div className="aviation-summary-title taf">TAF</div>
-                          <div className="aviation-summary-text">{result?.origin?.taf}</div>
+                          {(() => {
+                            const tafData = result?.origin?.taf ? parseTaf(result.origin.taf) : null;
+                            if (!tafData) return <div className="aviation-summary-text">No TAF data available</div>;
+                            return (
+                              <>
+                                <div className="aviation-summary-text" style={{marginBottom: '8px'}}>
+                                  <strong>Valid Period:</strong> {tafData.parsed?.validPeriod || 'Unknown'}<br/>
+                                  <strong>Forecast Periods:</strong> {tafData.parsed?.periods?.length || 0}
+                                </div>
+                                {tafData.parsed?.periods?.slice(0, 2).map((period, idx) => (
+                                  <div key={idx} style={{marginBottom: '6px', padding: '6px', background: '#f0f9ff', borderRadius: '4px'}}>
+                                    <div><strong>{period.type}:</strong></div>
+                                    <div>Wind: {period.wind}</div>
+                                    <div>Visibility: {period.visibility}</div>
+                                    <div>Clouds: {period.clouds}</div>
+                                    {period.weather !== "No significant weather" && <div>Weather: {period.weather}</div>}
+                                  </div>
+                                ))}
+                                <div className="aviation-summary-raw" style={{fontSize: '11px', color: '#666', background: '#f8f9fa', padding: '8px', borderRadius: '4px', fontFamily: 'monospace'}}>
+                                  {tafData.raw}
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                       {depReport === "notams" && (
                         <div className="aviation-summary-block">
                           <div className="aviation-summary-title notam">NOTAMs</div>
-                          <div className="aviation-summary-text">{result?.origin?.notams}</div>
+                          {(() => {
+                            const notamData = result?.origin?.notams ? parseNotam(result.origin.notams) : null;
+                            if (!notamData) return <div className="aviation-summary-text">No NOTAM data available</div>;
+                            return (
+                              <>
+                                <div className="aviation-summary-text" style={{marginBottom: '8px'}}>
+                                  <strong>NOTAM ID:</strong> {notamData.parsed?.id || 'Unknown'}<br/>
+                                  <strong>Category:</strong> {notamData.parsed?.category || 'Unknown'}<br/>
+                                  <strong>Impact:</strong> <span style={{color: notamData.parsed?.severity === 'High' ? '#dc2626' : notamData.parsed?.severity === 'Medium' ? '#ea580c' : '#16a34a'}}>{notamData.parsed?.severity || 'Unknown'}</span>
+                                </div>
+                                <div className="aviation-summary-text" style={{marginBottom: '8px'}}>
+                                  <strong>Details:</strong> {notamData.parsed?.details || 'No details available'}<br/>
+                                  {notamData.parsed?.effectiveDate && (
+                                    <>
+                                      <strong>Effective:</strong> {notamData.parsed.effectiveDate}<br/>
+                                      <strong>Expires:</strong> {notamData.parsed.expiryDate}<br/>
+                                    </>
+                                  )}
+                                  {notamData.parsed?.additionalInfo && (
+                                    <>
+                                      <strong>Note:</strong> {notamData.parsed.additionalInfo}
+                                    </>
+                                  )}
+                                </div>
+                                <div className="aviation-summary-raw" style={{fontSize: '11px', color: '#666', background: '#f8f9fa', padding: '8px', borderRadius: '4px', fontFamily: 'monospace'}}>
+                                  {notamData.raw}
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                       {result?.origin?.runwayData && (
@@ -334,19 +462,91 @@ export default function App() {
                       {arrReport === "metar" && (
                         <div className="aviation-summary-block">
                           <div className="aviation-summary-title metar">METAR</div>
-                          <div className="aviation-summary-text">{result?.destination?.metar}</div>
+                          {(() => {
+                            const metarData = result?.destination?.metar ? parseMetar(result.destination.metar) : null;
+                            if (!metarData) return <div className="aviation-summary-text">No METAR data available</div>;
+                            return (
+                              <>
+                                <div className="aviation-summary-text" style={{marginBottom: '8px'}}>
+                                  <strong>Conditions:</strong> {metarData.parsed?.flightRules || 'Unknown'} 
+                                  {metarData.parsed?.temperature && ` | ${metarData.parsed.temperature}/${metarData.parsed.dewpoint}`}
+                                </div>
+                                <div className="aviation-summary-text" style={{marginBottom: '8px'}}>
+                                  <strong>Wind:</strong> {metarData.parsed?.wind || 'Unknown'}<br/>
+                                  <strong>Visibility:</strong> {metarData.parsed?.visibility || 'Unknown'}<br/>
+                                  <strong>Clouds:</strong> {metarData.parsed?.clouds || 'Unknown'}<br/>
+                                  <strong>Weather:</strong> {metarData.parsed?.weather || 'None'}
+                                </div>
+                                <div className="aviation-summary-raw" style={{fontSize: '11px', color: '#666', background: '#f8f9fa', padding: '8px', borderRadius: '4px', fontFamily: 'monospace'}}>
+                                  {metarData.raw}
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                       {arrReport === "taf" && (
                         <div className="aviation-summary-block">
                           <div className="aviation-summary-title taf">TAF</div>
-                          <div className="aviation-summary-text">{result?.destination?.taf}</div>
+                          {(() => {
+                            const tafData = result?.destination?.taf ? parseTaf(result.destination.taf) : null;
+                            if (!tafData) return <div className="aviation-summary-text">No TAF data available</div>;
+                            return (
+                              <>
+                                <div className="aviation-summary-text" style={{marginBottom: '8px'}}>
+                                  <strong>Valid Period:</strong> {tafData.parsed?.validPeriod || 'Unknown'}<br/>
+                                  <strong>Forecast Periods:</strong> {tafData.parsed?.periods?.length || 0}
+                                </div>
+                                {tafData.parsed?.periods?.slice(0, 2).map((period, idx) => (
+                                  <div key={idx} style={{marginBottom: '6px', padding: '6px', background: '#f0f9ff', borderRadius: '4px'}}>
+                                    <div><strong>{period.type}:</strong></div>
+                                    <div>Wind: {period.wind}</div>
+                                    <div>Visibility: {period.visibility}</div>
+                                    <div>Clouds: {period.clouds}</div>
+                                    {period.weather !== "No significant weather" && <div>Weather: {period.weather}</div>}
+                                  </div>
+                                ))}
+                                <div className="aviation-summary-raw" style={{fontSize: '11px', color: '#666', background: '#f8f9fa', padding: '8px', borderRadius: '4px', fontFamily: 'monospace'}}>
+                                  {tafData.raw}
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                       {arrReport === "notams" && (
                         <div className="aviation-summary-block">
                           <div className="aviation-summary-title notam">NOTAMs</div>
-                          <div className="aviation-summary-text">{result?.destination?.notams}</div>
+                          {(() => {
+                            const notamData = result?.destination?.notams ? parseNotam(result.destination.notams) : null;
+                            if (!notamData) return <div className="aviation-summary-text">No NOTAM data available</div>;
+                            return (
+                              <>
+                                <div className="aviation-summary-text" style={{marginBottom: '8px'}}>
+                                  <strong>NOTAM ID:</strong> {notamData.parsed?.id || 'Unknown'}<br/>
+                                  <strong>Category:</strong> {notamData.parsed?.category || 'Unknown'}<br/>
+                                  <strong>Impact:</strong> <span style={{color: notamData.parsed?.severity === 'High' ? '#dc2626' : notamData.parsed?.severity === 'Medium' ? '#ea580c' : '#16a34a'}}>{notamData.parsed?.severity || 'Unknown'}</span>
+                                </div>
+                                <div className="aviation-summary-text" style={{marginBottom: '8px'}}>
+                                  <strong>Details:</strong> {notamData.parsed?.details || 'No details available'}<br/>
+                                  {notamData.parsed?.effectiveDate && (
+                                    <>
+                                      <strong>Effective:</strong> {notamData.parsed.effectiveDate}<br/>
+                                      <strong>Expires:</strong> {notamData.parsed.expiryDate}<br/>
+                                    </>
+                                  )}
+                                  {notamData.parsed?.additionalInfo && (
+                                    <>
+                                      <strong>Note:</strong> {notamData.parsed.additionalInfo}
+                                    </>
+                                  )}
+                                </div>
+                                <div className="aviation-summary-raw" style={{fontSize: '11px', color: '#666', background: '#f8f9fa', padding: '8px', borderRadius: '4px', fontFamily: 'monospace'}}>
+                                  {notamData.raw}
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>

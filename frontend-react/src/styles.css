@@ -169,6 +169,14 @@ body{
   border-color: var(--accent-600);
   box-shadow: 0 0 0 4px rgba(14,165,164,0.08);
 }
+.input-success {
+  border-color: #16a34a !important;
+  background-color: #f0fdf4 !important;
+}
+.input-success:focus {
+  border-color: #16a34a !important;
+  box-shadow: 0 0 0 4px rgba(22,163,74,0.08) !important;
+}
 .textarea-small{ min-height:92px; resize:vertical }
 
 /* Buttons */
