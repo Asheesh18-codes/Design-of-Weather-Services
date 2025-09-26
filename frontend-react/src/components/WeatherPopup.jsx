@@ -118,23 +118,6 @@ export default function WeatherPopup({ weatherData, position, onClose }) {
       </div>
 
       <div className="weather-popup-content">
-        {decoded && (
-          <div style={{ marginBottom: '16px' }}>
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#374151' }}>
-              Current Conditions
-            </h4>
-            <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#4b5563' }}>
-              <div style={{ marginBottom: '4px' }}>{decoded.station || 'Unknown Station'}</div>
-              <div style={{ marginBottom: '4px' }}>{formatWindInfo(decoded)}</div>
-              <div style={{ marginBottom: '4px' }}>{formatVisibility(decoded)}</div>
-              <div style={{ marginBottom: '4px' }}>{formatClouds(decoded)}</div>
-              <div style={{ marginBottom: '4px' }}>{formatTemperature(decoded)}</div>
-              {decoded.altimeter && (
-                <div style={{ marginBottom: '4px' }}>Altimeter: {decoded.altimeter.value} {decoded.altimeter.unit || 'inHg'}</div>
-              )}
-            </div>
-          </div>
-        )}
 
         {metar && (
           <div style={{ marginBottom: '12px' }}>

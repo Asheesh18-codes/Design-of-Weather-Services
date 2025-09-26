@@ -367,24 +367,64 @@ export function parseNotam(notam) {
   }
 }
 
+
 export function parsePirep(pirep) {
   if (!pirep) return null;
   // Example: UA /OV DCA270015 /TM 1920 /FL080 /TP B737 /TB MOD /IC NEG /SK BKN070-TOP090
   const match = pirep.match(/\/OV\s(\w+)\s\/TM\s(\d{4})\s\/FL(\d{3})\s\/TP\s(\w+)\s\/TB\s(\w+)\s\/IC\s(\w+)\s\/SK\s(.*)/);
   if (!match) return { raw: pirep, summary: "Unable to parse PIREP." };
+  const [_, location, time, fl, aircraft, tb, ic, sky] = match;
+  // Abbreviation maps
+  const tbMap = { "NEG": "none", "LGT": "light", "MOD": "moderate", "SEV": "severe", "LGT-MOD": "light to moderate", "MOD-SEV": "moderate to severe", "EXTRM": "extreme", "CHOP": "choppy" };
+  const icMap = { "NEG": "none", "LGT": "light", "MOD": "moderate", "SEV": "severe", "TR": "trace" };
+  const skyMap = { "CLR": "clear", "BKN": "broken clouds", "OVC": "overcast", "SCT": "scattered clouds", "FEW": "few clouds", "SKC": "sky clear" };
+  // Convert time (hhmm) to readable
+  const timeStr = time ? `${time.slice(0,2)}:${time.slice(2,4)} UTC` : time;
+  // Convert FL to feet
+  const flFeet = fl ? `${parseInt(fl,10)*100} feet` : fl;
+  // Expand sky (may be like BKN070-TOP090)
+  let skyDesc = sky;
+  if (sky) {
+    skyDesc = sky.replace(/([A-Z]{3})(\d{3})?-?(TOP)?(\d{3})?/g, (m, cov, base, top, topAlt) => {
+      let s = skyMap[cov] || cov;
+      if (base) s += ` at ${parseInt(base,10)*100} feet`;
+      if (top && topAlt) s += `, tops at ${parseInt(topAlt,10)*100} feet`;
+      return s;
+    });
+  }
+  // Compose English summary
   return {
     raw: pirep,
-    summary: `Location: ${match[1]}, Time: ${match[2]}, FL: ${match[3]}00ft, Aircraft: ${match[4]}, Turbulence: ${match[5]}, Icing: ${match[6]}, Sky: ${match[7]}`
+    summary: `Pilot report near ${location}. At ${timeStr}, a ${aircraft} reported ${tbMap[tb]||tb} turbulence and ${icMap[ic]||ic} icing at ${flFeet}. Sky condition: ${skyDesc}.`
   };
 }
+
 
 export function parseSigmet(sigmet) {
   if (!sigmet) return null;
   // Example: SIGMET NOVEMBER 2 VALID 261800/262200 KZNY- ...
   const match = sigmet.match(/SIGMET\s(\w+)\s(\d+)\sVALID\s(\d{6})\/(\d{6})\s(\w+)-\s(.*)/);
   if (!match) return { raw: sigmet, summary: "Unable to parse SIGMET." };
+  const [_, name, num, from, to, fir, details] = match;
+  // Expand details
+  let detailsText = details;
+  detailsText = detailsText.replace(/SEV\s*TURB/gi, "severe turbulence");
+  detailsText = detailsText.replace(/SEV\s*ICE/gi, "severe icing");
+  detailsText = detailsText.replace(/FCST/gi, "is forecast");
+  detailsText = detailsText.replace(/BTN\s*FL(\d{3})\s*AND\s*FL(\d{3})/gi, (m, fl1, fl2) => `between ${parseInt(fl1,10)*100} and ${parseInt(fl2,10)*100} feet`);
+  detailsText = detailsText.replace(/FL(\d{3})/gi, (m, fl) => `${parseInt(fl,10)*100} feet`);
+  detailsText = detailsText.replace(/KZNY/gi, "the New York FIR");
+  detailsText = detailsText.replace(/KZLA/gi, "the Los Angeles FIR");
+  // Convert validity
+  function parseTime(ts) {
+    if (!ts || ts.length !== 6) return ts;
+    const day = ts.slice(0,2), hour = ts.slice(2,4), min = ts.slice(4,6);
+    return `${day}th, ${hour}:${min} UTC`;
+  }
+  const fromStr = parseTime(from);
+  const toStr = parseTime(to);
   return {
     raw: sigmet,
-    summary: `Advisory: ${match[1]} #${match[2]}, Valid: ${match[3]}-${match[4]}, FIR: ${match[5]}, Details: ${match[6]}`
+    summary: `SIGMET ${name} #${num} is valid from ${fromStr} to ${toStr} in ${fir === 'KZNY' ? 'the New York FIR' : fir === 'KZLA' ? 'the Los Angeles FIR' : fir}. ${detailsText.charAt(0).toUpperCase() + detailsText.slice(1)}.`
   };
 }

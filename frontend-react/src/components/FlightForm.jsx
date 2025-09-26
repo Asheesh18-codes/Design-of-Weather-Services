@@ -1,41 +1,42 @@
-
 import React, { useState, useEffect } from "react";
+import { airportAPI, weatherAPI } from "../services/api";
+  const fetchMetarTaf = async (icao, setMetar, setTaf, setLoading) => {
+    if (!icao || icao.length !== 4) return;
+    setLoading && setLoading(true);
+    try {
+      const [metarRes, tafRes] = await Promise.all([
+        weatherAPI.getLatestMetar ? weatherAPI.getLatestMetar(icao) : weatherAPI.decodeMetar({ icao, metarString: undefined }),
+        weatherAPI.getLatestTaf ? weatherAPI.getLatestTaf(icao) : weatherAPI.decodeTaf({ icao, tafString: undefined })
+      ]);
+      if (metarRes && (metarRes.metar || metarRes.raw)) setMetar(metarRes.metar || metarRes.raw);
+      if (tafRes && (tafRes.taf || tafRes.raw)) setTaf(tafRes.taf || tafRes.raw);
+    } catch (e) {
+      onError && onError("Failed to fetch METAR/TAF for " + icao);
+    }
+    setLoading && setLoading(false);
+  };
 
-// Sample airport data from seed-data.js
-const sampleAirports = {
-  'KJFK': {
-    name: 'John F. Kennedy International Airport',
-    metar: 'KJFK 251651Z 24016G24KT 10SM BKN250 22/13 A3000 RMK AO2 SLP157 T02220128',
-    taf: 'TAF KJFK 251720Z 1818/1924 24015G25KT P6SM BKN200 FM182000 25012KT P6SM SCT250',
-    notam: 'A1234/23 KJFK AD AP RWY 04L/22R CLSD DUE CONST 2309261200-2309262359'
-  },
-  'KSFO': {
-    name: 'San Francisco International Airport',
-    metar: 'KSFO 251651Z 28008KT 10SM FEW200 18/12 A3015 RMK AO2 SLP218 T01780122',
-    taf: 'TAF KSFO 261740Z 2618/2724 30012KT P6SM SCT015 BKN120',
-    notam: 'A5678/23 KSFO AD AP TWY A BTN TWY B AND TWY C CLSD 2309261800-2309270600'
-  },
-  'KORD': {
-    name: 'Chicago O\'Hare International Airport',
-    metar: 'KORD 251651Z 09012KT 8SM -RA BKN015 OVC030 15/13 A2995 RMK AO2 RAB25 SLP142',
-    taf: 'TAF KORD 261740Z 2618/2724 22015KT P6SM SCT050 BKN120 FM270000 21012KT 6SM -RA BKN030 OVC080',
-    notam: 'A9012/23 KORD AD AP ILS RWY 28L U/S 2309260800-2309271200'
-  },
-  'KDEN': {
-    name: 'Denver International Airport',
-    metar: 'KDEN 251651Z 25018G24KT 10SM SCT180 BKN240 18/M02 A3012 RMK AO2 SLP216',
-    taf: 'TAF KDEN 261740Z 2618/2724 25018G24KT P6SM SCT180 BKN240',
-    notam: 'A7890/23 KDEN AD AP RWY 16R/34L CLSD FOR MAINT 2309261000-2309261600'
-  },
-  'KLAX': {
-    name: 'Los Angeles International Airport',
-    metar: 'KLAX 251651Z 24008KT 10SM FEW015 SCT250 21/18 A2988 RMK AO2 SLP120',
-    taf: 'TAF KLAX 261740Z 2618/2724 24008KT P6SM FEW015 SCT250',
-    notam: 'A5555/23 KLAX AD AP TWY B CLSD BTN TWY A AND TWY C 2309261200-2309270600'
-  }
-};
+export default function FlightForm({ onSubmit, onError, loading, onWeatherChange }) {
+  // Weather autofill loading states
+  const [loadingDepWx, setLoadingDepWx] = useState(false);
+  const [loadingArrWx, setLoadingArrWx] = useState(false);
 
-export default function FlightForm({ onSubmit, onError, loading }) {
+  // Fetch METAR/TAF for a given ICAO and set state
+  const fetchMetarTaf = async (icao, setMetar, setTaf, setLoading) => {
+    if (!icao || icao.length !== 4) return;
+    setLoading && setLoading(true);
+    try {
+      const [metarRes, tafRes] = await Promise.all([
+        weatherAPI.getLatestMetar ? weatherAPI.getLatestMetar(icao) : weatherAPI.decodeMetar({ icao, metarString: undefined }),
+        weatherAPI.getLatestTaf ? weatherAPI.getLatestTaf(icao) : weatherAPI.decodeTaf({ icao, tafString: undefined })
+      ]);
+      if (metarRes && (metarRes.metar || metarRes.raw)) setMetar(metarRes.metar || metarRes.raw);
+      if (tafRes && (tafRes.taf || tafRes.raw)) setTaf(tafRes.taf || tafRes.raw);
+    } catch (e) {
+      onError && onError("Failed to fetch METAR/TAF for " + icao);
+    }
+    setLoading && setLoading(false);
+  };
   // Departure
   const [origin, setOrigin] = useState("");
   const [depMetar, setDepMetar] = useState("");
@@ -50,39 +51,73 @@ export default function FlightForm({ onSubmit, onError, loading }) {
   const [arrTaf, setArrTaf] = useState("");
   const [arrNotam, setArrNotam] = useState("");
 
-  // Auto-populate departure airport data when origin changes
+  // Dynamic weather update
   useEffect(() => {
-    if (origin && origin.length === 4) {
-      const airportData = sampleAirports[origin.toUpperCase()];
-      if (airportData) {
-        setDepMetar(airportData.metar);
-        setDepTaf(airportData.taf);
-        setDepNotam(airportData.notam);
-      } else {
-        // Clear fields if airport not found in sample data
-        setDepMetar("");
-        setDepTaf("");
-        setDepNotam("");
-      }
+    if (onWeatherChange) {
+      onWeatherChange({
+        depMetar, arrMetar, depTaf, arrTaf, depNotam, arrNotam, sigmets, pireps
+      });
     }
+  }, [depMetar, arrMetar, depTaf, arrTaf, depNotam, arrNotam, sigmets, pireps, onWeatherChange]);
+
+  // Live ICAO lookup for airport names
+  const [originInfo, setOriginInfo] = useState(null);
+  const [originLookup, setOriginLookup] = useState("idle"); // idle|loading|ok|notfound|error
+  const [destInfo, setDestInfo] = useState(null);
+  const [destLookup, setDestLookup] = useState("idle");
+
+  // ICAO lookup for airport names is retained, but automatic METAR/TAF fetching is disabled.
+  useEffect(() => {
+    if (!origin || origin.length !== 4) {
+      setOriginInfo(null);
+      setOriginLookup("idle");
+      return;
+    }
+    setOriginLookup("loading");
+    const t = setTimeout(async () => {
+      try {
+        const info = await airportAPI.getAirportInfo(origin.toUpperCase());
+        if (info?.airport?.name) {
+          setOriginInfo(info.airport);
+          setOriginLookup("ok");
+        } else {
+          setOriginInfo(null);
+          setOriginLookup("notfound");
+        }
+      } catch (e) {
+        setOriginInfo(null);
+        setOriginLookup("error");
+      }
+    }, 300);
+    return () => clearTimeout(t);
   }, [origin]);
 
-  // Auto-populate arrival airport data when destination changes
   useEffect(() => {
-    if (destination && destination.length === 4) {
-      const airportData = sampleAirports[destination.toUpperCase()];
-      if (airportData) {
-        setArrMetar(airportData.metar);
-        setArrTaf(airportData.taf);
-        setArrNotam(airportData.notam);
-      } else {
-        // Clear fields if airport not found in sample data
-        setArrMetar("");
-        setArrTaf("");
-        setArrNotam("");
-      }
+    if (!destination || destination.length !== 4) {
+      setDestInfo(null);
+      setDestLookup("idle");
+      return;
     }
+    setDestLookup("loading");
+    const t = setTimeout(async () => {
+      try {
+        const info = await airportAPI.getAirportInfo(destination.toUpperCase());
+        if (info?.airport?.name) {
+          setDestInfo(info.airport);
+          setDestLookup("ok");
+        } else {
+          setDestInfo(null);
+          setDestLookup("notfound");
+        }
+      } catch (e) {
+        setDestInfo(null);
+        setDestLookup("error");
+      }
+    }, 300);
+    return () => clearTimeout(t);
   }, [destination]);
+
+  // (Optional) In future we can auto-fill fields from live APIs when ICAO is valid
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -115,42 +150,25 @@ export default function FlightForm({ onSubmit, onError, loading }) {
     onSubmit(payload);
   };
 
-  const generateLiveDemo = async () => {
-    // Set demo airports with automatic data population
+
+  // Demo input handler
+  const fillDemo = () => {
     setOrigin("KORD");
+    setDepMetar("KORD 271651Z 18005KT 10SM FEW020 SCT250 25/12 A3012 RMK AO2 SLP200");
+    setDepTaf(`TAF KORD 271120Z 2712/2818 17008KT P6SM SCT025
+      FM271800 20012KT P6SM BKN035
+      FM280000 22010KT P6SM SCT050`);
+    setDepNotam("RWY 10L/28R CLSD 1200-1800Z DLY; TWY B CLSD BTN B2 AND B3");
+    setSigmets(`SIGMET NOVEMBER 2 VALID 271800/272200 KZNY- SEV TURB FCST BTN FL180 AND FL340
+SIGMET OSCAR 1 VALID 271900/272300 KZLA- SEV ICE FCST BTN FL120 AND FL200`);
+    setPireps(`UA /OV DCA270015 /TM 1920 /FL080 /TP B737 /TB MOD /IC NEG /SK BKN070-TOP090
+UA /OV ORD180020 /TM 2000 /FL060 /TP E145 /TB LGT-MOD CHOP /IC NEG /SK SCT040`);
     setDestination("KSFO");
-    setSigmets("SIGMET R2 VALID 261800/262200 KZNY- KORD severe turbulence");
-    setPireps("UA /OV ORD270015 /TM 1920 /FL080 /TP B737 /TB MOD /IC NEG /SK BKN070-TOP090");
-    
-    // Wait a moment for useEffect to populate the weather data
-    setTimeout(() => {
-      // Get the airport data that would be populated by useEffect
-      const kordData = sampleAirports['KORD'];
-      const ksfoData = sampleAirports['KSFO'];
-      
-      // Create the payload with all the demo data
-      const demoPayload = {
-        origin: {
-          icao: "KORD",
-          metar: kordData.metar,
-          taf: kordData.taf,
-          notams: kordData.notam,
-        },
-        enroute: {
-          sigmets: "SIGMET R2 VALID 261800/262200 KZNY- KORD severe turbulence",
-          pireps: "UA /OV ORD270015 /TM 1920 /FL080 /TP B737 /TB MOD /IC NEG /SK BKN070-TOP090",
-        },
-        destination: {
-          icao: "KSFO",
-          metar: ksfoData.metar,
-          taf: ksfoData.taf,
-          notams: ksfoData.notam,
-        }
-      };
-      
-      // Automatically submit to generate the full briefing
-      onSubmit(demoPayload);
-    }, 100);
+    setArrMetar("KSFO 271656Z 29010KT 10SM FEW008 SCT250 18/12 A3005 RMK AO2 SLP176");
+    setArrTaf(`TAF KSFO 271130Z 2712/2818 30008KT P6SM FEW008 SCT250
+      FM271800 32012KT P6SM BKN015
+      FM280000 28010KT P6SM SCT020`);
+    setArrNotam("RWY 28L/10R CLSD 1400-2000Z DLY; ILS RWY 28R U/S");
   };
 
   const clearForm = () => {
@@ -173,28 +191,33 @@ export default function FlightForm({ onSubmit, onError, loading }) {
         {/* Departure Section */}
         <div className="card" style={{marginBottom: '18px', background: '#f7fbfc'}}>
           <div style={{fontWeight:700, fontSize:'16px', color:'var(--accent-600)', marginBottom:'10px'}}>🛫 Departure</div>
-          <div className="form-row">
+          <div className="form-row" style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
             <label className="label">Origin ICAO *</label>
             <input 
-              className={`input ${origin && sampleAirports[origin.toUpperCase()] ? 'input-success' : ''}`} 
+              className={`input`} 
               value={origin} 
               onChange={(e) => setOrigin(e.target.value.toUpperCase())} 
               placeholder="e.g. KORD" 
               maxLength={4} 
               required 
+              style={{ flex: 1 }}
             />
-            {origin && origin.length === 4 && sampleAirports[origin.toUpperCase()] && (
-              <small style={{color: '#16a34a', fontWeight: 500}}>
-                ✓ {sampleAirports[origin.toUpperCase()].name}
+            {/* Auto-Fill Wx button removed as requested */}
+            {origin && origin.length === 4 && (
+              <small style={{
+                display: 'block', marginTop: 6,
+                color: originLookup === 'ok' ? '#16a34a' : originLookup === 'loading' ? '#64748b' : originLookup === 'error' ? '#dc2626' : '#ea580c',
+                fontWeight: 500
+              }}>
+                {originLookup === 'loading' && 'Looking up airport…'}
+                {originLookup === 'ok' && `✓ ${originInfo?.name}`}
+                {originLookup === 'notfound' && '⚠ Not in DB'}
+                {originLookup === 'error' && '⚠ Lookup error'}
               </small>
             )}
-            {origin && origin.length === 4 && !sampleAirports[origin.toUpperCase()] && (
-              <small style={{color: '#ea580c', fontWeight: 500}}>
-                ⚠ Airport not in demo database - please enter weather data manually
-              </small>
-            )}
+            
           </div>
-          <div className="form-row">
+          <div className="form-row" style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
             <label className="label">METAR *</label>
             <textarea className="input textarea" value={depMetar} onChange={(e) => setDepMetar(e.target.value)} placeholder="Paste METAR report..." rows={2} required />
           </div>
@@ -203,8 +226,8 @@ export default function FlightForm({ onSubmit, onError, loading }) {
             <textarea className="input textarea" value={depTaf} onChange={(e) => setDepTaf(e.target.value)} placeholder="Paste TAF report..." rows={2} required />
           </div>
           <div className="form-row">
-            <label className="label">NOTAMs *</label>
-            <textarea className="input textarea" value={depNotam} onChange={(e) => setDepNotam(e.target.value)} placeholder="Runway closures, taxiway restrictions..." rows={2} required />
+            <label className="label">NOTAMs (optional)</label>
+            <textarea className="input textarea" value={depNotam} onChange={(e) => setDepNotam(e.target.value)} placeholder="Runway closures, taxiway restrictions..." rows={2} />
           </div>
           {/* Runway/Performance and Planned Departure Time removed */}
         </div>
@@ -229,23 +252,28 @@ export default function FlightForm({ onSubmit, onError, loading }) {
           <div className="form-row">
             <label className="label">Destination ICAO *</label>
             <input 
-              className={`input ${destination && sampleAirports[destination.toUpperCase()] ? 'input-success' : ''}`} 
+              className={`input`} 
               value={destination} 
               onChange={(e) => setDestination(e.target.value.toUpperCase())} 
               placeholder="e.g. KSFO" 
               maxLength={4} 
               required 
+              style={{ flex: 1 }}
             />
-            {destination && destination.length === 4 && sampleAirports[destination.toUpperCase()] && (
-              <small style={{color: '#16a34a', fontWeight: 500}}>
-                ✓ {sampleAirports[destination.toUpperCase()].name}
+            {/* Auto-Fill Wx button removed as requested */}
+            {destination && destination.length === 4 && (
+              <small style={{
+                display: 'block', marginTop: 6,
+                color: destLookup === 'ok' ? '#16a34a' : destLookup === 'loading' ? '#64748b' : destLookup === 'error' ? '#dc2626' : '#ea580c',
+                fontWeight: 500
+              }}>
+                {destLookup === 'loading' && 'Looking up airport…'}
+                {destLookup === 'ok' && `✓ ${destInfo?.name}`}
+                {destLookup === 'notfound' && '⚠ Not in DB'}
+                {destLookup === 'error' && '⚠ Lookup error'}
               </small>
             )}
-            {destination && destination.length === 4 && !sampleAirports[destination.toUpperCase()] && (
-              <small style={{color: '#ea580c', fontWeight: 500}}>
-                ⚠ Airport not in demo database - please enter weather data manually
-              </small>
-            )}
+            
           </div>
           <div className="form-row">
             <label className="label">METAR *</label>
@@ -256,20 +284,20 @@ export default function FlightForm({ onSubmit, onError, loading }) {
             <textarea className="input textarea" value={arrTaf} onChange={(e) => setArrTaf(e.target.value)} placeholder="Paste TAF report..." rows={2} required />
           </div>
           <div className="form-row">
-            <label className="label">NOTAMs *</label>
-            <textarea className="input textarea" value={arrNotam} onChange={(e) => setArrNotam(e.target.value)} placeholder="Runway availability, nav aid outages..." rows={2} required />
+            <label className="label">NOTAMs (optional)</label>
+            <textarea className="input textarea" value={arrNotam} onChange={(e) => setArrNotam(e.target.value)} placeholder="Runway availability, nav aid outages..." rows={2} />
           </div>
         </div>
 
         <div className="form-actions" style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '18px'}}>
-          <button type="button" onClick={generateLiveDemo} className="btn btn-primary" disabled={loading} style={{width: '100%'}}>Live Demo - Generate Full Briefing</button>
+          <button type="button" onClick={fillDemo} className="btn btn-secondary" disabled={loading} style={{width: '100%'}}>Demo Input</button>
           <button type="button" onClick={clearForm} className="btn btn-ghost" disabled={loading} style={{width: '100%'}}>Clear</button>
           <button type="submit" className="btn btn-primary" disabled={loading} style={{width: '100%'}}>{loading ? "Generating Briefing..." : "Get Briefing"}</button>
         </div>
         <div className="form-help">
           <p>* Required fields</p>
-          <p>Available airports in demo: <strong>KJFK, KSFO, KORD, KDEN, KLAX</strong></p>
-          <p>Enter any 4-letter ICAO airport code. Weather data will auto-populate for available airports.</p>
+          <p>Enter any 4-letter ICAO airport code (e.g., KJFK, KSFO, KORD, KLAX).</p>
+          <p>Paste METAR and TAF for each airport. NOTAMs are optional.</p>
         </div>
       </form>
     </div>
