@@ -119,29 +119,19 @@ class SummarizeResponse(BaseModel):
     processed_by: str = "Python NLP Service"
     processed_at: str
 
-
-# Airport info endpoint
-@app.get("/api/airport-info")
-async def get_airport_info(icao: str):
-    """
-    Get airport coordinates and name for a given ICAO code using decoded METAR
-    """
-    aviation_api = get_aviation_api()
-    if not aviation_api:
-        raise HTTPException(status_code=500, detail="AviationWeatherAPI not available")
-    result = aviation_api.fetch_metar(icao, hours=1, decoded=True)
-    if not result.get("success") or not result.get("data"):
-        raise HTTPException(status_code=404, detail=f"No METAR data found for ICAO {icao}")
-    metar_data = result["data"]
-    # Try to extract coordinates and name from decoded METAR
-    if isinstance(metar_data, list) and len(metar_data) > 0:
-        entry = metar_data[0]
-        lat = entry.get("lat") or entry.get("latitude")
-        lon = entry.get("lon") or entry.get("longitude")
-        name = entry.get("station_name") or entry.get("name") or entry.get("station_id") or icao
-        if lat is not None and lon is not None:
-            return {"icao": icao, "lat": lat, "lon": lon, "name": name}
-    raise HTTPException(status_code=404, detail=f"Coordinates not found for ICAO {icao}")
+# Health check endpoint
+@app.get("/")
+async def health_check():
+    return {
+        "status": "healthy",
+        "service": "Aviation Weather NLP Service",
+        "version": "1.0.0",
+        "endpoints": {
+            "parse_notam": "/nlp/parse-notam",
+            "summarize": "/nlp/summarize"
+        },
+        "timestamp": datetime.now().isoformat()
+    }
 
 # Parse NOTAM endpoint
 @app.post("/nlp/parse-notam", response_model=NOTAMParseResponse)

@@ -1,48 +1,26 @@
 // Waypoint Generator Utility
 // Generates flight waypoints between origin and destination airports
 
-// Sample airport coordinates database (in real implementation, use comprehensive airport database)
-const AIRPORT_COORDS = {
-  // US Major Airports
-  'KJFK': { lat: 40.6413, lon: -73.7781, name: 'John F Kennedy International Airport' },
-  'KLGA': { lat: 40.7769, lon: -73.8740, name: 'LaGuardia Airport' },
-  'KEWR': { lat: 40.6895, lon: -74.1745, name: 'Newark Liberty International Airport' },
-  'KLAX': { lat: 33.9425, lon: -118.4081, name: 'Los Angeles International Airport' },
-  'KORD': { lat: 41.9742, lon: -87.9073, name: 'Chicago OHare International Airport' },
-  'KATL': { lat: 33.6367, lon: -84.4281, name: 'Hartsfield-Jackson Atlanta International Airport' },
-  'KDFW': { lat: 32.8998, lon: -97.0403, name: 'Dallas/Fort Worth International Airport' },
-  'KDEN': { lat: 39.8561, lon: -104.6737, name: 'Denver International Airport' },
-  'KSEA': { lat: 47.4502, lon: -122.3088, name: 'Seattle-Tacoma International Airport' },
-  'KPHX': { lat: 33.4484, lon: -112.0740, name: 'Phoenix Sky Harbor International Airport' },
-  'KMIA': { lat: 25.7959, lon: -80.2870, name: 'Miami International Airport' },
-  'KBOS': { lat: 42.3656, lon: -71.0096, name: 'Boston Logan International Airport' },
-  'KSFO': { lat: 37.6213, lon: -122.3790, name: 'San Francisco International Airport' },
-  'KLAS': { lat: 36.0840, lon: -115.1537, name: 'McCarran International Airport' },
-  'KMSP': { lat: 44.8820, lon: -93.2218, name: 'Minneapolis-Saint Paul International Airport' },
-  
-  // International Airports
-  'EGLL': { lat: 51.4700, lon: -0.4543, name: 'London Heathrow Airport' },
-  'LFPG': { lat: 49.0097, lon: 2.5479, name: 'Charles de Gaulle Airport' },
-  'EDDF': { lat: 50.0379, lon: 8.5622, name: 'Frankfurt Airport' },
-  'NZAA': { lat: -36.8485, lon: 174.7633, name: 'Auckland Airport' },
-  'YSSY': { lat: -33.9399, lon: 151.1753, name: 'Sydney Kingsford Smith Airport' },
-  'RJAA': { lat: 35.7647, lon: 140.3864, name: 'Narita International Airport' },
-  
-  // Navigation waypoints (examples)
-  'NIKKO': { lat: 41.2167, lon: -73.4333, name: 'NIKKO Waypoint' },
-  'DIXIE': { lat: 38.5833, lon: -77.4167, name: 'DIXIE Waypoint' },
-  'PEACH': { lat: 33.2333, lon: -84.3833, name: 'PEACH Waypoint' },
-  'BLUEE': { lat: 35.1667, lon: -80.9333, name: 'BLUEE Waypoint' }
-};
+const apiFetcher = require('./apiFetcher');
 
 // Generate waypoints for flight route
-const generateWaypoints = (origin, destination, altitude = 35000, customRoute = null) => {
+const generateWaypoints = async (origin, destination, altitude = 35000, customRoute = null) => {
   if (!origin || !destination) {
     throw new Error('Origin and destination are required');
   }
 
-  const originCoords = getAirportCoords(origin);
-  const destCoords = getAirportCoords(destination);
+  // Fetch airport info from NLP service with error handling
+  let originCoords, destCoords;
+  try {
+    originCoords = await apiFetcher.getAirportInfoFromNLP(origin);
+  } catch (err) {
+    throw new Error(`Origin ICAO lookup failed: ${err.message}`);
+  }
+  try {
+    destCoords = await apiFetcher.getAirportInfoFromNLP(destination);
+  } catch (err) {
+    throw new Error(`Destination ICAO lookup failed: ${err.message}`);
+  }
 
   if (!originCoords || !destCoords) {
     throw new Error(`Airport coordinates not found for ${!originCoords ? origin : destination}`);
@@ -68,12 +46,10 @@ const generateWaypoints = (origin, destination, altitude = 35000, customRoute = 
   if (customRoute && Array.isArray(customRoute)) {
     for (let i = 0; i < customRoute.length; i++) {
       const waypointId = customRoute[i];
-      const waypointCoords = getAirportCoords(waypointId);
-      
+      const waypointCoords = await apiFetcher.getAirportInfoFromNLP(waypointId);
       if (waypointCoords) {
         const prevWaypoint = waypoints[waypoints.length - 1];
         const distance = calculateDistance(prevWaypoint.lat, prevWaypoint.lon, waypointCoords.lat, waypointCoords.lon);
-        
         waypoints.push({
           id: waypoints.length + 1,
           name: waypointId,
@@ -91,12 +67,10 @@ const generateWaypoints = (origin, destination, altitude = 35000, customRoute = 
   } else {
     // Generate intermediate waypoints automatically
     const intermediateWaypoints = generateIntermediateWaypoints(originCoords, destCoords, altitude);
-    
     for (let i = 0; i < intermediateWaypoints.length; i++) {
       const waypoint = intermediateWaypoints[i];
       const prevWaypoint = waypoints[waypoints.length - 1];
       const distance = calculateDistance(prevWaypoint.lat, prevWaypoint.lon, waypoint.lat, waypoint.lon);
-      
       waypoints.push({
         id: waypoints.length + 1,
         name: waypoint.name,
@@ -115,7 +89,6 @@ const generateWaypoints = (origin, destination, altitude = 35000, customRoute = 
   // Add destination airport
   const lastWaypoint = waypoints[waypoints.length - 1];
   const finalDistance = calculateDistance(lastWaypoint.lat, lastWaypoint.lon, destCoords.lat, destCoords.lon);
-  
   waypoints.push({
     id: waypoints.length + 1,
     name: destination,

@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const flightPlanController = require('../controllers/flightPlanController');
 
+// Generate flight plan with waypoints (base route for compatibility)
+// POST /api/flightplan
+router.post('/', flightPlanController.generate);
+
 // Generate flight plan with waypoints
 // POST /api/flightplan/generate
 router.post('/generate', flightPlanController.generate);

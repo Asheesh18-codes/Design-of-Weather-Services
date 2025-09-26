@@ -1,25 +1,98 @@
 const axios = require('axios');
 
-// Summarize NOTAMs using external NLP service (Python backend)
-const summarize = async (req, res) => {
+// Parse NOTAMs using Python NLP service
+const parseNotam = async (req, res) => {
   try {
     const { notamText, icao } = req.body;
 
     if (!notamText) {
       return res.status(400).json({
-        error: 'NOTAM text is required for summarization'
+        error: 'NOTAM text is required for parsing'
       });
     }
 
-    // Forward to Python NLP microservice
+    // Forward to Python NLP microservice for parsing
     const pythonBackendUrl = process.env.PYTHON_NLP_URL || 'http://localhost:8000';
     
     try {
-      const nlpResponse = await axios.post(`${pythonBackendUrl}/api/notam/summarize`, {
+      const nlpResponse = await axios.post(`${pythonBackendUrl}/nlp/parse-notam`, {
         notam_text: notamText,
         airport_code: icao
       }, {
-        timeout: 10000,
+        timeout: 15000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const parsedData = nlpResponse.data;
+
+      res.json({
+        success: true,
+        original: notamText,
+        parsed: parsedData,
+        icao: icao || 'N/A',
+        processedBy: 'Python NLP Service',
+        processedAt: new Date().toISOString()
+      });
+
+    } catch (nlpError) {
+      console.warn('NLP parsing service unavailable, using fallback:', nlpError.message);
+      
+      // Fallback parsing when Python service is unavailable
+      const fallbackParsed = {
+        notam_id: extractNotamId(notamText),
+        effective_date: extractEffectiveDate(notamText),
+        expiry_date: extractExpiryDate(notamText),
+        location: icao || extractLocation(notamText),
+        subject: categorizeNotam(notamText),
+        description: generateFallbackSummary(notamText),
+        coordinates: extractCoordinates(notamText),
+        altitude_affected: extractAltitude(notamText),
+        severity: assessSeverityFromText(notamText)
+      };
+
+      res.json({
+        success: true,
+        original: notamText,
+        parsed: fallbackParsed,
+        icao: icao || 'N/A',
+        processedBy: 'Fallback Parser',
+        processedAt: new Date().toISOString(),
+        warning: 'NLP parsing service unavailable, using basic text analysis'
+      });
+    }
+
+  } catch (error) {
+    console.error('NOTAM parsing error:', error);
+    res.status(500).json({
+      error: 'Failed to parse NOTAM',
+      message: error.message
+    });
+  }
+};
+
+// Summarize NOTAMs using external NLP service (Python backend)
+const summarize = async (req, res) => {
+  try {
+    const { notamText, weatherData, icao } = req.body;
+
+    if (!notamText && !weatherData) {
+      return res.status(400).json({
+        error: 'NOTAM text or weather data is required for summarization'
+      });
+    }
+
+    // Forward to Python NLP microservice for summarization
+    const pythonBackendUrl = process.env.PYTHON_NLP_URL || 'http://localhost:8000';
+    
+    try {
+      const nlpResponse = await axios.post(`${pythonBackendUrl}/nlp/summarize`, {
+        notam_text: notamText,
+        weather_data: weatherData,
+        airport_code: icao
+      }, {
+        timeout: 15000,
         headers: {
           'Content-Type': 'application/json'
         }
@@ -29,37 +102,38 @@ const summarize = async (req, res) => {
 
       res.json({
         success: true,
-        original: notamText,
-        summary: {
-          shortSummary: summary.summary || generateFallbackSummary(notamText),
-          keyPoints: summary.key_points || extractKeyPoints(notamText),
-          severity: summary.severity || 'MEDIUM',
-          category: summary.category || 'GENERAL',
-          affectedOperations: summary.affected_operations || [],
-          timeframe: summary.timeframe || 'TBD'
+        original: {
+          notam: notamText,
+          weather: weatherData
         },
+        summary: summary.summary || generateFallbackSummary(notamText || JSON.stringify(weatherData)),
+        keyPoints: summary.key_points || extractKeyPoints(notamText || JSON.stringify(weatherData)),
+        severity: summary.severity || 'MEDIUM',
+        recommendations: summary.recommendations || [],
         icao: icao || 'N/A',
-        processedBy: 'NLP Service',
+        processedBy: 'Python NLP Service',
         processedAt: new Date().toISOString()
       });
 
     } catch (nlpError) {
-      console.warn('NLP service unavailable, using fallback processing:', nlpError.message);
+      console.warn('NLP summarization service unavailable, using fallback:', nlpError.message);
       
       // Fallback processing when Python service is unavailable
+      const text = notamText || JSON.stringify(weatherData);
       const fallbackSummary = {
-        shortSummary: generateFallbackSummary(notamText),
-        keyPoints: extractKeyPoints(notamText),
-        severity: assessSeverityFromText(notamText),
-        category: categorizeNotam(notamText),
-        affectedOperations: extractOperations(notamText),
-        timeframe: extractTimeframe(notamText)
+        summary: generateFallbackSummary(text),
+        keyPoints: extractKeyPoints(text),
+        severity: assessSeverityFromText(text),
+        recommendations: generateBasicRecommendations(text)
       };
 
       res.json({
         success: true,
-        original: notamText,
-        summary: fallbackSummary,
+        original: {
+          notam: notamText,
+          weather: weatherData
+        },
+        ...fallbackSummary,
         icao: icao || 'N/A',
         processedBy: 'Fallback Parser',
         processedAt: new Date().toISOString(),
@@ -70,7 +144,7 @@ const summarize = async (req, res) => {
   } catch (error) {
     console.error('NOTAM summarization error:', error);
     res.status(500).json({
-      error: 'Failed to summarize NOTAM',
+      error: 'Failed to summarize NOTAM/Weather data',
       message: error.message
     });
   }
@@ -477,7 +551,70 @@ function getMostCommonType(notams) {
   return Object.keys(types).reduce((a, b) => types[a] > types[b] ? a : b, 'GENERAL');
 }
 
+// Helper functions for fallback parsing
+function extractNotamId(text) {
+  const match = text.match(/([A-Z]\d{4}\/\d{2})/);
+  return match ? match[1] : 'UNKNOWN';
+}
+
+function extractEffectiveDate(text) {
+  const match = text.match(/(\d{10})/);
+  return match ? new Date(match[1].slice(0, 2) + '20' + match[1].slice(2, 4) + '-' + 
+    match[1].slice(4, 6) + '-' + match[1].slice(6, 8) + 'T' + 
+    match[1].slice(8, 10) + ':00:00Z').toISOString() : null;
+}
+
+function extractExpiryDate(text) {
+  const parts = text.split(' ');
+  const tillIndex = parts.findIndex(p => p.includes('TILL'));
+  if (tillIndex > -1 && parts[tillIndex + 1]) {
+    return extractEffectiveDate(parts[tillIndex + 1]);
+  }
+  return null;
+}
+
+function extractLocation(text) {
+  const match = text.match(/([A-Z]{4})/);
+  return match ? match[1] : 'UNKNOWN';
+}
+
+function extractCoordinates(text) {
+  const match = text.match(/(\d{2})(\d{2})(\d{2})([NS])\s*(\d{3})(\d{2})(\d{2})([EW])/);
+  if (match) {
+    const lat = parseInt(match[1]) + parseInt(match[2])/60 + parseInt(match[3])/3600;
+    const lng = parseInt(match[5]) + parseInt(match[6])/60 + parseInt(match[7])/3600;
+    return {
+      latitude: match[4] === 'S' ? -lat : lat,
+      longitude: match[8] === 'W' ? -lng : lng
+    };
+  }
+  return null;
+}
+
+function extractAltitude(text) {
+  const match = text.match(/(\d+)\s*FT/i);
+  return match ? parseInt(match[1]) : null;
+}
+
+function generateBasicRecommendations(text) {
+  const recommendations = [];
+  const upperText = text.toUpperCase();
+  
+  if (upperText.includes('CLOSED') || upperText.includes('CLSD')) {
+    recommendations.push('Plan alternate routing');
+  }
+  if (upperText.includes('CONSTRUCTION')) {
+    recommendations.push('Expect delays and plan extra taxi time');
+  }
+  if (upperText.includes('NAVAID')) {
+    recommendations.push('Verify backup navigation aids are available');
+  }
+  
+  return recommendations;
+}
+
 module.exports = {
+  parseNotam,
   summarize,
   getNotams,
   parseNotams,

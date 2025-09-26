@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import FlightForm from "./components/FlightForm";
 import MapView from "./components/MapView";
-import { parseWeather } from "./services/api";
+import { flightPlanAPI } from "./services/api";
 import "./styles.css";
 
 /**
@@ -75,10 +75,10 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const res = await parseWeather(payload);
+      const res = await flightPlanAPI.generateWaypoints(payload);
       setResult(res);
     } catch (err) {
-      setError(err?.message || "Failed to parse");
+      setError(err?.message || "Failed to generate flight plan");
     } finally {
       setLoading(false);
     }
