@@ -289,16 +289,13 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 // Mock data generators for testing/fallback
 
 function generateMockMetar(icao) {
-  const mockMetars = {
-    'KJFK': 'KJFK 252151Z 24016G22KT 10SM FEW150 SCT250 22/18 A2995 RMK AO2',
-    'KLAX': 'KLAX 252153Z 25008KT 10SM CLR 24/16 A2992 RMK AO2',
-    'KORD': 'KORD 252151Z 28012KT 10SM BKN020 OVC035 15/12 A3010 RMK AO2',
-    'KATL': 'KATL 252152Z 31018G24KT 10SM SCT030 BKN100 26/20 A2988 RMK AO2',
-    'KDEN': 'KDEN 252153Z 25015G21KT 10SM FEW120 SCT180 18/M02 A3025 RMK AO2'
-  };
-
-  const metarText = mockMetars[icao] || `${icao} 252153Z 00000KT 10SM CLR 20/10 A3000 RMK AO2`;
-  
+  // Generate random temperature and dew point for realism
+  const temp = Math.floor(Math.random() * 20) + 10; // 10°C to 29°C
+  const dew = temp - (Math.floor(Math.random() * 7) + 2); // dew point 2-8°C lower
+  const windDir = String(Math.floor(Math.random() * 36) * 10).padStart(3, '0');
+  const windSpeed = Math.floor(Math.random() * 20) + 2; // 2-21 KT
+  const altimeter = 2990 + Math.floor(Math.random() * 30); // 2990-3019
+  const metarText = `${icao} 252153Z ${windDir}${windSpeed < 10 ? '0' : ''}${windSpeed}KT 10SM CLR ${temp}/${dew} A${altimeter} RMK AO2`;
   return {
     raw: metarText,
     observationTime: new Date().toISOString(),

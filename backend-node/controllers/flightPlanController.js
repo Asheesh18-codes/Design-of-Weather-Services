@@ -50,7 +50,7 @@ const generate = async (req, res) => {
     // Create response in expected format
     const response = {
       success: true,
-      raw: `Flight plan: ${origin} to ${destination}`,
+  raw: `Flight plan: ${origin.icao || origin} to ${destination.icao || destination}`,
       parsed: {
         success: true,
         origin,
@@ -67,7 +67,10 @@ const generate = async (req, res) => {
         Dewpoint: 12,
         Altimeter: "A3012"
       },
-      summary: `Flight plan from ${origin} to ${destination} at ${altitude}ft`,
+      summary:
+        `Flight plan from ${origin.icao || origin} (${originCoords.name || 'Unknown'}) to ${destination.icao || destination} (${destCoords.name || 'Unknown'}) at cruising altitude ${altitude} ft. ` +
+        `The route departs from ${originCoords.name || origin.icao || origin}, proceeds through ${waypoints.length - 2 > 0 ? (waypoints.length - 2) + ' enroute waypoints' : 'a direct path'}, and arrives at ${destCoords.name || destination.icao || destination}. ` +
+        `Weather and NOTAMs are considered for both departure and arrival. Please review enroute hazards and advisories for SIGMETs and PIREPs.`,
       hf_summary: "Flight plan generated successfully",
       category: "Clear",
       route: {
