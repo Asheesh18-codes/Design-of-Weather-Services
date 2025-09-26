@@ -1,4 +1,5 @@
-/* src/styles.css - handcrafted, no Tailwind */
+/* src/styles.css - handcrafted, final version with color coding */
+
 /* Google font */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap");
 
@@ -6,15 +7,20 @@
   --bg: #f6f9fb;
   --card-bg: #ffffff;
   --muted: #6b7280;
-  --accent: #0ea5a4;
-  --accent-600: #110596;
-  --glass: rgba(255,255,255,0.6);
+  --accent: #0ea5a4;        /* teal */
+  --accent-600: #059669;
   --soft-shadow: 0 8px 30px rgba(16,24,40,0.06);
   --border: #e6eef6;
   --radius-lg: 14px;
+
+  --color-clear: #10b981;    /* green */
+  --color-significant: #f59e0b; /* amber */
+  --color-severe: #ef4444;   /* red */
+  --product-bg: #eef2ff;
+  --product-text: #4338ca;
 }
 
-/* Base */
+/* Reset & base */
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 body{
@@ -25,9 +31,10 @@ body{
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
   line-height:1.45;
+  font-size:14px;
 }
 
-/* Layout container */
+/* Layout */
 .container{
   max-width: 1200px;
   margin: 28px auto;
@@ -56,6 +63,16 @@ body{
 .header-title{font-size:20px;font-weight:700;color:#0f172a;margin:0}
 .header-sub{font-size:13px;color:var(--muted);margin-top:4px}
 
+/* Status badges */
+.status-indicator { display:flex; gap:8px; align-items:center; }
+.status-badge {
+  font-size:12px;padding:6px 8px;border-radius:999px;border:1px solid #e6eef6;background:white;
+  box-shadow: 0 6px 14px rgba(10,20,30,0.04);
+}
+.status-error{ color:#fff; background:var(--color-severe); border-color:rgba(239,68,68,0.25) }
+.status-ready{ color:#064e3b; background:#d1fae5; border-color:rgba(16,185,129,0.12) }
+.status-pending{ color:#0b3b53; background:#ecfeff; border-color:rgba(14,165,164,0.08) }
+
 /* Grid */
 .grid{
   display:grid;
@@ -75,10 +92,10 @@ body{
   padding:18px;
 }
 
-/* Hero card variant */
+/* Hero */
 .card-hero{ padding:22px }
 
-/* Form */
+/* Form basics */
 .form-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px }
 .label{ font-size:13px; color:#13303a; font-weight:600; display:flex;justify-content:space-between; align-items:center }
 .input, textarea{
@@ -116,7 +133,7 @@ body{
 .space-between{ display:flex; justify-content:space-between; align-items:center }
 .muted{ color:var(--muted); font-size:13px }
 
-/* Summary cards layout */
+/* Summary grid */
 .summary-grid{
   display:grid;
   grid-template-columns: 1fr;
@@ -131,36 +148,70 @@ body{
 
 /* Raw pre */
 .raw-pre{
-  background:#fbfdff; border:1px dashed #eef6fb; padding:10px; border-radius:8px; font-size:12px; color:#0b2740; max-height:170px; overflow:auto;
+  background:#fbfdff; border:1px dashed #eef6fb; padding:10px; border-radius:8px; font-size:12px; color:#0b2740; max-height:270px; overflow:auto;
 }
 
-/* Map container */
+/* Map */
 .map-wrapper{
   height:420px;border-radius:12px; overflow:hidden; border:1px solid #e6eef6; background:linear-gradient(180deg,#f7fbfc,#ffffff);
   position:relative;
 }
 .map-fallback{ display:flex; align-items:center; justify-content:center; height:100%; color:var(--muted) }
 
-/* Marker styles (used inside MapView) */
+/* Marker styles */
 .marker-bubble{
   display:flex; align-items:center; gap:8px; background:white; padding:6px 8px; border-radius:999px; box-shadow:0 4px 12px rgba(10,20,30,0.08); border:1px solid #f0f6fb; font-size:12px;
 }
 .marker-dot{ width:10px;height:10px;border-radius:50%; background:var(--accent); box-shadow:0 2px 6px rgba(14,165,164,0.15) }
 
-/* Footer/legend inside map */
-.map-legend{ position:absolute; right:14px; top:14px; background:rgba(255,255,255,0.9); padding:8px 10px; border-radius:8px; border:1px solid #eef6fb; display:flex; gap:8px; align-items:center; font-size:12px; color:#22303a }
+/* Legend */
+.map-legend{ position:absolute; right:14px; top:14px; background:rgba(255,255,255,0.9); padding:8px 10px; border-radius:8px; border:1px solid #eef6fb; display:flex; gap:12px; align-items:center; font-size:12px; color:#22303a }
+.legend-item{ display:flex; gap:8px; align-items:center; }
+.dot{ width:10px; height:10px; border-radius:50%; display:inline-block; box-shadow: 0 3px 8px rgba(2,6,23,0.08) }
+.dot-green{ background: var(--color-clear) }
+.dot-yellow{ background: var(--color-significant) }
+.dot-red{ background: var(--color-severe) }
 
-/* small utilities */
-.kv{ font-size:13px; color:#0f172a }
+/* Product badge (top-right small) */
+.product-badge{
+  padding:6px 10px; border-radius:999px; font-weight:700; font-size:12px;
+  background:var(--product-bg); color:var(--product-text); border:1px solid rgba(99,102,241,0.12);
+}
+
+/* Category badges */
+.category-badge{
+  display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; font-weight:700; font-size:12px;
+  color:#052e2a; background:#ecfdf5; border:1px solid rgba(16,185,129,0.08);
+}
+.category-badge .badge-dot{
+  width:10px; height:10px; border-radius:999px; display:inline-block;
+}
+.badge-clear{ background: #ecfdf5; color: #064e3b; border:1px solid rgba(16,185,129,0.12) }
+.badge-clear .badge-dot{ background: var(--color-clear) }
+.badge-significant{ background: #fff7ed; color:#66350f; border:1px solid rgba(245,158,11,0.12) }
+.badge-significant .badge-dot{ background: var(--color-significant) }
+.badge-severe{ background: #fff1f2; color:#7f1d1d; border:1px solid rgba(239,68,68,0.12) }
+.badge-severe .badge-dot{ background: var(--color-severe) }
+
+/* small key-value */
+.kv{ font-size:13px; color:#0f172a; display:flex; justify-content:space-between }
 .kv .val{ font-weight:700; margin-left:6px }
 
-/* subtle animation utility */
-.fade-enter{ opacity:0; transform: translateY(8px) }
-.fade-enter-active{ opacity:1; transform:none; transition:all .36s cubic-bezier(.2,.9,.2,1) }
+/* forced override (high specificity) to ensure visibility if other CSS interferes */
+.category-badge.badge-clear { background: #ecfdf5 !important; color: #064e3b !important; border: 1px solid rgba(16,185,129,0.12) !important; }
+.category-badge.badge-clear .badge-dot { background: #10b981 !important; }
+.category-badge.badge-significant { background: #fff7ed !important; color: #7c4b12 !important; border: 1px solid rgba(245,158,11,0.12) !important; }
+.category-badge.badge-significant .badge-dot { background: #f59e0b !important; }
+.category-badge.badge-severe { background: #fff1f2 !important; color: #7f1d1d !important; border: 1px solid rgba(239,68,68,0.12) !important; }
+.category-badge.badge-severe .badge-dot { background: #ef4444 !important; }
 
 /* responsive tweaks */
 @media(max-width:640px){
   .brand-logo{ width:48px;height:48px }
   .container{ padding:16px }
   .header-title{ font-size:18px }
+}
+@media(max-width:480px){
+  .card-hero{ padding:16px }
+  .summary-block{ min-height: auto; }
 }
