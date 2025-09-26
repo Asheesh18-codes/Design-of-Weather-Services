@@ -5,7 +5,7 @@ const axios = require('axios');
 
 // Base URLs for various aviation weather APIs
 const API_ENDPOINTS = {
-  aviationWeather: 'https://aviationweather.gov/api/data',
+  aviationWeather: 'https://aviationweather.gov/data/api/',
   aviationWeatherV1: 'https://aviationweather.gov/adds/dataserver_current/httpparam',
   metarTaf: 'https://tgftp.nws.noaa.gov/data',
   backup: 'https://api.checkwx.com' // Backup service (requires API key)

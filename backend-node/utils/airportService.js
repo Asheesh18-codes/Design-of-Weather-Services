@@ -334,9 +334,32 @@ class AirportService {
 
     return stats;
   }
+
+  /**
+   * Find the nearest airport ICAO code to a given lat/lon
+   * @param {number} lat
+   * @param {number} lon
+   * @param {number} maxDistanceKm (optional) - Only return if within this distance
+   * @returns {string|null} ICAO code or null if not found
+   */
+  findNearestICAO(lat, lon, maxDistanceKm = 50) {
+    let nearest = null;
+    let minDist = Infinity;
+    for (const airport of this.airports) {
+      if (!airport.latitude_deg || !airport.longitude_deg || !airport.icao_code) continue;
+      const dist = this.calculateDistanceBetweenPoints(lat, lon, airport.latitude_deg, airport.longitude_deg);
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = airport.icao_code.toUpperCase();
+      }
+    }
+    if (minDist <= maxDistanceKm) return nearest;
+    return null;
+  }
 }
 
 // Create singleton instance
 const airportService = new AirportService();
 
+module.exports = airportService;
 module.exports = airportService;

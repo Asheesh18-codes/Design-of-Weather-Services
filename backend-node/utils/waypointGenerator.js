@@ -131,9 +131,9 @@ const generateIntermediateWaypoints = (origin, destination, altitude) => {
   for (let i = 1; i <= numWaypoints; i++) {
     const fraction = i / (numWaypoints + 1);
     const waypoint = interpolateCoordinates(origin, destination, fraction);
-    
+    // For now, use simple naming until we resolve the airportService issue
     waypoints.push({
-      name: `WPT${String(i).padStart(2, '0')}`,
+      name: `${(origin.icao || 'WP').substring(0,3).toUpperCase()}${i}`,
       type: 'WAYPOINT',
       lat: waypoint.lat,
       lon: waypoint.lon,

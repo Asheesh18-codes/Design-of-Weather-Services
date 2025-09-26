@@ -20,6 +20,8 @@ export default function FlightForm({ onSubmit, onError, loading, onWeatherChange
   // Weather autofill loading states
   const [loadingDepWx, setLoadingDepWx] = useState(false);
   const [loadingArrWx, setLoadingArrWx] = useState(false);
+  // Auto-fetch toggle
+  const [autoFetch, setAutoFetch] = useState(true);
 
   // Fetch METAR/TAF for a given ICAO and set state
   const fetchMetarTaf = async (icao, setMetar, setTaf, setLoading) => {
@@ -80,6 +82,10 @@ export default function FlightForm({ onSubmit, onError, loading, onWeatherChange
         if (info?.airport?.name) {
           setOriginInfo(info.airport);
           setOriginLookup("ok");
+          // Auto-fetch METAR/TAF if toggle is ON
+          if (autoFetch) {
+            fetchMetarTaf(origin.toUpperCase(), setDepMetar, setDepTaf, setLoadingDepWx);
+          }
         } else {
           setOriginInfo(null);
           setOriginLookup("notfound");
@@ -90,7 +96,7 @@ export default function FlightForm({ onSubmit, onError, loading, onWeatherChange
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [origin]);
+  }, [origin, autoFetch]);
 
   useEffect(() => {
     if (!destination || destination.length !== 4) {
@@ -105,6 +111,10 @@ export default function FlightForm({ onSubmit, onError, loading, onWeatherChange
         if (info?.airport?.name) {
           setDestInfo(info.airport);
           setDestLookup("ok");
+          // Auto-fetch METAR/TAF if toggle is ON
+          if (autoFetch) {
+            fetchMetarTaf(destination.toUpperCase(), setArrMetar, setArrTaf, setLoadingArrWx);
+          }
         } else {
           setDestInfo(null);
           setDestLookup("notfound");
@@ -115,8 +125,7 @@ export default function FlightForm({ onSubmit, onError, loading, onWeatherChange
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [destination]);
-
+  }, [destination, autoFetch]);
   // (Optional) In future we can auto-fill fields from live APIs when ICAO is valid
 
   const handleSubmit = (e) => {
@@ -187,6 +196,10 @@ UA /OV ORD180020 /TM 2000 /FL060 /TP E145 /TB LGT-MOD CHOP /IC NEG /SK SCT040`);
   return (
     <div className="flight-form-container" style={{padding: '8px 0'}}>
       <h2 className="form-title" style={{fontSize: '20px', fontWeight: 700, color: 'var(--accent-600)', marginBottom: 18}}>Pilot Weather Briefing</h2>
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
+        <label style={{fontWeight:600, color:'var(--accent-600)'}}>Auto-fetch METAR/TAF</label>
+        <input type="checkbox" checked={autoFetch} onChange={e=>setAutoFetch(e.target.checked)} style={{width:18,height:18}} />
+      </div>
       <form onSubmit={handleSubmit} className="flight-form">
         {/* Departure Section */}
         <div className="card" style={{marginBottom: '18px', background: '#f7fbfc'}}>

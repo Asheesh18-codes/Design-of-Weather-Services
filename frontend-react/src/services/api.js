@@ -72,6 +72,41 @@ export const flightPlanAPI = {
 
 // Weather API calls
 export const weatherAPI = {
+
+  /**
+   * Fetch latest METAR for an airport by ICAO
+   * @param {string} icao - ICAO code
+   * @returns {Promise<{raw: string, ...}>}
+   */
+  getLatestMetar: async (icao) => {
+    if (!icao || icao.length !== 4) throw new Error('Valid ICAO required');
+    try {
+      const response = await nodeClient.get(`/weather/current/${icao}`);
+      // Return the raw METAR string for compatibility
+      return response.data.current?.raw ? { raw: response.data.current.raw } : { raw: 'N/A' };
+    } catch (error) {
+      console.warn('getLatestMetar failed:', error.message);
+      return { raw: 'N/A' };
+    }
+  },
+
+  /**
+   * Fetch latest TAF for an airport by ICAO
+   * @param {string} icao - ICAO code
+   * @returns {Promise<{raw: string, ...}>}
+   */
+  getLatestTaf: async (icao) => {
+    if (!icao || icao.length !== 4) throw new Error('Valid ICAO required');
+    try {
+      const response = await nodeClient.get(`/weather/forecast/${icao}`);
+      // Return the raw TAF string for compatibility
+      return response.data.forecast?.raw ? { raw: response.data.forecast.raw } : { raw: 'N/A' };
+    } catch (error) {
+      console.warn('getLatestTaf failed:', error.message);
+      return { raw: 'N/A' };
+    }
+  },
+
   /**
    * Decode METAR data
    * @param {Object} payload - { metarString, icao }
