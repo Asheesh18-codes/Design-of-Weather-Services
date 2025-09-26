@@ -6,6 +6,7 @@ require('dotenv').config();
 const weatherRoutes = require('./routes/weatherRoutes');
 const flightPlanRoutes = require('./routes/flightPlanRoutes');
 const notamRoutes = require('./routes/notamRoutes');
+const airportRoutes = require('./routes/airportRoutes');
 const severityController = require('./controllers/severityController');
 
 // Initialize Express app
@@ -39,6 +40,7 @@ app.get('/', (req, res) => {
       weather: '/api/weather',
       flightPlan: '/api/flightplan',
       notam: '/api/notam',
+      airports: '/api/airports',
       severity: '/api/severity'
     }
   });
@@ -48,6 +50,7 @@ app.get('/', (req, res) => {
 app.use('/api/weather', weatherRoutes);
 app.use('/api/flightplan', flightPlanRoutes);
 app.use('/api/notam', notamRoutes);
+app.use('/api/airports', airportRoutes);
 
 // Add severity classification endpoints
 app.post('/api/severity/classify', severityController.classifyWeather);
@@ -67,7 +70,7 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
   res.status(404).json({
     error: 'Route not found',
-    availableRoutes: ['/api/weather', '/api/flightplan', '/api/notam', '/api/severity']
+    availableRoutes: ['/api/weather', '/api/flightplan', '/api/notam', '/api/airports', '/api/severity']
   });
 });
 
@@ -78,6 +81,7 @@ app.listen(PORT, () => {
   console.log(`🌤️  Weather endpoint: http://localhost:${PORT}/api/weather`);
   console.log(`✈️  Flight plan endpoint: http://localhost:${PORT}/api/flightplan`);
   console.log(`📋 NOTAM endpoint: http://localhost:${PORT}/api/notam`);
+  console.log(`🛩️  Airport database: http://localhost:${PORT}/api/airports`);
   console.log(`⚡ Severity endpoint: http://localhost:${PORT}/api/severity`);
 });
 

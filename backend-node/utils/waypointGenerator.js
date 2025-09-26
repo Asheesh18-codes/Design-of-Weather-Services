@@ -4,22 +4,29 @@
 const apiFetcher = require('./apiFetcher');
 
 // Generate waypoints for flight route
-const generateWaypoints = async (origin, destination, altitude = 35000, customRoute = null) => {
+const generateWaypoints = async (origin, destination, altitude = 35000, customRoute = null, providedCoords = null) => {
   if (!origin || !destination) {
     throw new Error('Origin and destination are required');
   }
 
-  // Fetch airport info from NLP service with error handling
+  // Use provided coordinates if available, otherwise fetch from NLP service
   let originCoords, destCoords;
-  try {
-    originCoords = await apiFetcher.getAirportInfoFromNLP(origin);
-  } catch (err) {
-    throw new Error(`Origin ICAO lookup failed: ${err.message}`);
-  }
-  try {
-    destCoords = await apiFetcher.getAirportInfoFromNLP(destination);
-  } catch (err) {
-    throw new Error(`Destination ICAO lookup failed: ${err.message}`);
+  
+  if (providedCoords && providedCoords.originCoords && providedCoords.destCoords) {
+    originCoords = providedCoords.originCoords;
+    destCoords = providedCoords.destCoords;
+  } else {
+    // Fallback to NLP service with error handling
+    try {
+      originCoords = await apiFetcher.getAirportInfoFromNLP(origin);
+    } catch (err) {
+      throw new Error(`Origin ICAO lookup failed: ${err.message}`);
+    }
+    try {
+      destCoords = await apiFetcher.getAirportInfoFromNLP(destination);
+    } catch (err) {
+      throw new Error(`Destination ICAO lookup failed: ${err.message}`);
+    }
   }
 
   if (!originCoords || !destCoords) {
