@@ -511,7 +511,7 @@ export default function App() {
                                 <div><strong>Conditions:</strong> {metarData.parsed?.flightRules || 'Unknown'}</div>
                                 {metarData.parsed?.temperature && (
                                   <div style={{ marginTop: 4 }}>
-                                    <strong>Temperature:</strong> {metarData.parsed.temperature}/{metarData.parsed.dewpoint}°C
+                                    <strong>Temperature:</strong> {metarData.parsed.temperature}/{metarData.parsed.dewpoint}
                                   </div>
                                 )}
                                 <div style={{ marginTop: 4 }}><strong>Wind:</strong> {metarData.parsed?.wind || 'Unknown'}</div>
@@ -730,7 +730,7 @@ export default function App() {
                                 <div><strong>Conditions:</strong> {metarData.parsed?.flightRules || 'Unknown'}</div>
                                 {metarData.parsed?.temperature && (
                                   <div style={{ marginTop: 4 }}>
-                                    <strong>Temperature:</strong> {metarData.parsed.temperature}/{metarData.parsed.dewpoint}°C
+                                    <strong>Temperature:</strong> {metarData.parsed.temperature}/{metarData.parsed.dewpoint}
                                   </div>
                                 )}
                                 <div style={{ marginTop: 4 }}><strong>Wind:</strong> {metarData.parsed?.wind || 'Unknown'}</div>
