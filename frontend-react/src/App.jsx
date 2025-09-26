@@ -1,20 +1,11 @@
 import React, { useState } from "react";
 import FlightForm from "./components/FlightForm";
+import { parseMetar, parseTaf, parseNotam, parsePirep, parseSigmet } from "./services/aviationParsers";
 import MapView from "./components/MapView";
 import { flightPlanAPI } from "./services/api";
 import "./styles.css";
 
-/**
- * App: main dashboard.
- * - shows parsed summary + richer detailed weather fields
- * - uses result.data (avwx) or result.parsed (fallback) robustly
- *
- * This version includes:
- * - sampleDemo object
- * - Load Demo button (manual)
- * - optional auto-load (commented) for dev convenience
- */
-
+// Utility functions
 function getSafe(obj, ...keys) {
   if (!obj) return undefined;
   let cur = obj;
@@ -33,6 +24,9 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  // Report selectors for Departure and Arrival
+  const [depReport, setDepReport] = useState("metar");
+  const [arrReport, setArrReport] = useState("metar");
 
   // ---------- demo payload (realistic shape expected by UI) ----------
   const sampleDemo = {
@@ -129,6 +123,13 @@ export default function App() {
   const station = getField("station") ?? getSafe(result, "parsed", "station") ?? getSafe(result, "parsed", "station_id") ?? getSafe(result, "parsed", "icao") ?? "-";
   const obsTime = getField("time") ?? getField("Time") ?? getSafe(result, "parsed", "time") ?? getSafe(result, "parsed", "observation_time") ?? "-";
 
+  // ---------- Aviation Data Parsing ----------
+  const metarSummary = result?.metar ? parseMetar(result.metar) : null;
+  const tafSummary = result?.taf ? parseTaf(result.taf) : null;
+  const notamSummary = result?.notam ? parseNotam(result.notam) : null;
+  const pirepSummary = result?.pirep ? parsePirep(result.pirep) : null;
+  const sigmetSummary = result?.sigmet ? parseSigmet(result.sigmet) : null;
+
   // ---------- UI ----------
   return (
     <div className="container">
@@ -165,9 +166,9 @@ export default function App() {
               <li>Use the "Fill example" for a quick demo.</li>
             </ul>
 
-            <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-              <button onClick={() => setResult(sampleDemo)} className="btn btn-ghost">Load Demo</button>
-              <button onClick={() => { setResult(null); setError(null); }} className="btn btn-ghost">Clear Demo</button>
+            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <button onClick={() => setResult(sampleDemo)} className="btn btn-ghost" style={{width:'100%'}}>Load Demo</button>
+              <button onClick={() => { setResult(null); setError(null); }} className="btn btn-ghost" style={{width:'100%'}}>Clear Demo</button>
             </div>
           </div>
         </aside>
@@ -237,9 +238,118 @@ export default function App() {
                   </div>
 
                   <div style={{ height: 12 }} />
-                  <div className="card">
-                    <div className="summary-title">Raw / Full Data</div>
-                    <pre className="raw-pre">{JSON.stringify(result, null, 2)}</pre>
+                  {/* Grouped Pilot Weather/Ops Package UI */}
+                  <div className="card aviation-summary-card">
+                    <div className="aviation-summary-header">🛫 Departure</div>
+                    <div style={{marginBottom: '12px'}}>
+                      <label style={{fontWeight:600, marginRight:12}}>Select Report:</label>
+                      <label style={{marginRight:10}}>
+                        <input type="radio" name="depReport" value="metar" checked={depReport === "metar"} onChange={() => setDepReport("metar")} /> METAR
+                      </label>
+                      <label style={{marginRight:10}}>
+                        <input type="radio" name="depReport" value="taf" checked={depReport === "taf"} onChange={() => setDepReport("taf")} /> TAF
+                      </label>
+                      <label>
+                        <input type="radio" name="depReport" value="notams" checked={depReport === "notams"} onChange={() => setDepReport("notams")} /> NOTAMs
+                      </label>
+                    </div>
+                    <div className="aviation-summary-blocks">
+                      <div className="aviation-summary-block">
+                        <div className="aviation-summary-title metar">Origin ICAO</div>
+                        <div className="aviation-summary-text">{result?.origin?.icao}</div>
+                      </div>
+                      {depReport === "metar" && (
+                        <div className="aviation-summary-block">
+                          <div className="aviation-summary-title metar">METAR</div>
+                          <div className="aviation-summary-text">{result?.origin?.metar}</div>
+                        </div>
+                      )}
+                      {depReport === "taf" && (
+                        <div className="aviation-summary-block">
+                          <div className="aviation-summary-title taf">TAF</div>
+                          <div className="aviation-summary-text">{result?.origin?.taf}</div>
+                        </div>
+                      )}
+                      {depReport === "notams" && (
+                        <div className="aviation-summary-block">
+                          <div className="aviation-summary-title notam">NOTAMs</div>
+                          <div className="aviation-summary-text">{result?.origin?.notams}</div>
+                        </div>
+                      )}
+                      {result?.origin?.runwayData && (
+                        <div className="aviation-summary-block">
+                          <div className="aviation-summary-title">Runway/Performance Data</div>
+                          <div className="aviation-summary-text">{result?.origin?.runwayData}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ height: 12 }} />
+                  <div className="card aviation-summary-card">
+                    <div className="aviation-summary-header">✈️ Enroute Essentials</div>
+                    <div className="aviation-summary-blocks">
+                      {result?.enroute?.sigmets && (
+                        <div className="aviation-summary-block">
+                          <div className="aviation-summary-title sigmet">SIGMETs</div>
+                          <div className="aviation-summary-text">{result?.enroute?.sigmets}</div>
+                        </div>
+                      )}
+                      {result?.enroute?.pireps && (
+                        <div className="aviation-summary-block">
+                          <div className="aviation-summary-title pirep">PIREPs</div>
+                          <div className="aviation-summary-text">{result?.enroute?.pireps}</div>
+                        </div>
+                      )}
+                      {result?.enroute?.notams && (
+                        <div className="aviation-summary-block">
+                          <div className="aviation-summary-title notam">Enroute NOTAMs</div>
+                          <div className="aviation-summary-text">{result?.enroute?.notams}</div>
+                        </div>
+                      )}
+                      {!result?.enroute?.sigmets && !result?.enroute?.pireps && !result?.enroute?.notams && (
+                        <div className="aviation-summary-text">No enroute data provided.</div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ height: 12 }} />
+                  <div className="card aviation-summary-card">
+                    <div className="aviation-summary-header">🛬 Arrival</div>
+                    <div style={{marginBottom: '12px'}}>
+                      <label style={{fontWeight:600, marginRight:12}}>Select Report:</label>
+                      <label style={{marginRight:10}}>
+                        <input type="radio" name="arrReport" value="metar" checked={arrReport === "metar"} onChange={() => setArrReport("metar")} /> METAR
+                      </label>
+                      <label style={{marginRight:10}}>
+                        <input type="radio" name="arrReport" value="taf" checked={arrReport === "taf"} onChange={() => setArrReport("taf")} /> TAF
+                      </label>
+                      <label>
+                        <input type="radio" name="arrReport" value="notams" checked={arrReport === "notams"} onChange={() => setArrReport("notams")} /> NOTAMs
+                      </label>
+                    </div>
+                    <div className="aviation-summary-blocks">
+                      <div className="aviation-summary-block">
+                        <div className="aviation-summary-title metar">Destination ICAO</div>
+                        <div className="aviation-summary-text">{result?.destination?.icao}</div>
+                      </div>
+                      {arrReport === "metar" && (
+                        <div className="aviation-summary-block">
+                          <div className="aviation-summary-title metar">METAR</div>
+                          <div className="aviation-summary-text">{result?.destination?.metar}</div>
+                        </div>
+                      )}
+                      {arrReport === "taf" && (
+                        <div className="aviation-summary-block">
+                          <div className="aviation-summary-title taf">TAF</div>
+                          <div className="aviation-summary-text">{result?.destination?.taf}</div>
+                        </div>
+                      )}
+                      {arrReport === "notams" && (
+                        <div className="aviation-summary-block">
+                          <div className="aviation-summary-title notam">NOTAMs</div>
+                          <div className="aviation-summary-text">{result?.destination?.notams}</div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </>
               )}
