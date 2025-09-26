@@ -391,6 +391,26 @@ const getCacheStats = () => {
   };
 };
 
+// Fetch airport info from Python NLP service
+const getAirportInfoFromNLP = async (icao) => {
+  if (!icao) throw new Error('ICAO code is required');
+  const url = `http://localhost:8000/api/airport-info?icao=${encodeURIComponent(icao)}`;
+  try {
+    const response = await axios.get(url, { timeout: REQUEST_TIMEOUT });
+    if (response.data && response.data.lat && response.data.lon) {
+      return {
+        lat: response.data.lat,
+        lon: response.data.lon,
+        name: response.data.name || icao
+      };
+    } else {
+      throw new Error(`No coordinates found for ICAO ${icao}`);
+    }
+  } catch (error) {
+    throw new Error(`Failed to fetch airport info for ${icao}: ${error.message}`);
+  }
+};
+
 module.exports = {
   getLatestMetar,
   getLatestTaf,
@@ -399,7 +419,7 @@ module.exports = {
   getNotamsForAirport,
   clearCache,
   getCacheStats,
-  
+  getAirportInfoFromNLP,
   // Export for testing
   generateMockMetar,
   generateMockTaf,

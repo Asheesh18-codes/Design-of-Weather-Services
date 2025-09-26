@@ -3,7 +3,8 @@ import React, { useState } from "react";
 export default function FlightForm({ onSubmit, onError, loading }) {
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
-  const [altitude, setAltitude] = useState("");
+  const [altitude, setAltitude] = useState("10000");
+  const [aircraftType, setAircraftType] = useState("C172");
   const [departureTime, setDepartureTime] = useState(() => {
     // Default to current time + 1 hour
     const now = new Date();
@@ -28,7 +29,8 @@ export default function FlightForm({ onSubmit, onError, loading }) {
     const payload = {
       origin: origin.toUpperCase(),
       destination: destination.toUpperCase(),
-      altitude: altitude ? parseInt(altitude) : undefined,
+      altitude: parseInt(altitude) || 10000,
+      aircraftType: aircraftType,
       departureTime: departureTime,
       pilotMetar: pilotMetar || undefined
     };
@@ -40,13 +42,15 @@ export default function FlightForm({ onSubmit, onError, loading }) {
     setOrigin("KJFK");
     setDestination("KSFO");
     setAltitude("35000");
+    setAircraftType("B737");
     setPilotMetar("KJFK 251651Z 18005KT 10SM CLR 25/12 A3012");
   };
 
   const clearForm = () => {
     setOrigin("");
     setDestination("");
-    setAltitude("");
+    setAltitude("10000");
+    setAircraftType("C172");
     setPilotMetar("");
     // Reset departure time to current time + 1 hour
     const now = new Date();
@@ -84,17 +88,34 @@ export default function FlightForm({ onSubmit, onError, loading }) {
           </div>
           
           <div className="form-row">
-            <label className="label">Cruise Altitude (ft) - Optional</label>
+            <label className="label">Cruise Altitude (ft)</label>
             <input
               className="input"
               type="number"
               value={altitude}
               onChange={(e) => setAltitude(e.target.value)}
-              placeholder="35000"
+              placeholder="10000"
               min="1000"
               max="45000"
               step="500"
             />
+          </div>
+          
+          <div className="form-row">
+            <label className="label">Aircraft Type</label>
+            <select
+              className="input"
+              value={aircraftType}
+              onChange={(e) => setAircraftType(e.target.value)}
+            >
+              <option value="C152">C152 - Cessna 152</option>
+              <option value="C172">C172 - Cessna 172</option>
+              <option value="C182">C182 - Cessna 182</option>
+              <option value="PA28">PA28 - Piper Cherokee</option>
+              <option value="B737">B737 - Boeing 737</option>
+              <option value="A320">A320 - Airbus A320</option>
+              <option value="OTHER">Other</option>
+            </select>
           </div>
           
           <div className="form-row full-width">
@@ -153,5 +174,22 @@ export default function FlightForm({ onSubmit, onError, loading }) {
         </div>
       </form>
     </div>
+  );
+}
+          className="textarea-small input"
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          placeholder="Paste raw METAR/TAF/NOTAM string"
+        />
+      </div>
+      <div className="row" style={{ marginTop: 8 }}>
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? "Parsing…" : "Get Briefing"}
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={fillDemo}>
+          Fill example
+        </button>
+      </div>
+    </form>
   );
 }
