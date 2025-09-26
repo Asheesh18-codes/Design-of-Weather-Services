@@ -65,15 +65,12 @@ export default function FlightForm({ onSubmit, onError, loading }) {
     setDepMetar("");
     setDepTaf("");
     setDepNotam("");
-  setSigmets("");
-  setPireps("");
+    setSigmets("");
+    setPireps("");
     setDestination("");
     setArrMetar("");
     setArrTaf("");
     setArrNotam("");
-    const now = new Date();
-    now.setHours(now.getHours() + 1);
-    setDepartureTime(now.toISOString().slice(0, 16));
   };
 
   return (

@@ -1,6 +1,7 @@
 const waypointGenerator = require('../utils/waypointGenerator');
 const severityClassifier = require('../utils/severityClassifier');
 const apiFetcher = require('../utils/apiFetcher');
+const airportService = require('../utils/airportService');
 
 // Generate flight plan with waypoints
 const generate = async (req, res) => {
@@ -17,8 +18,34 @@ const generate = async (req, res) => {
       });
     }
 
+    // Get airport coordinates from database
+    const originCoords = airportService.getCoordinates(origin.icao || origin);
+    const destCoords = airportService.getCoordinates(destination.icao || destination);
+
+    if (!originCoords) {
+      return res.status(400).json({
+        error: 'Origin airport not found',
+        code: origin.icao || origin,
+        suggestion: 'Please use a valid ICAO code (e.g., KJFK, EGLL)'
+      });
+    }
+
+    if (!destCoords) {
+      return res.status(400).json({
+        error: 'Destination airport not found', 
+        code: destination.icao || destination,
+        suggestion: 'Please use a valid ICAO code (e.g., KJFK, EGLL)'
+      });
+    }
+
     // Generate waypoints dynamically using NLP service
-    const waypoints = await waypointGenerator.generateWaypoints(origin, destination, altitude, route);
+    const waypoints = await waypointGenerator.generateWaypoints(
+      origin.icao || origin, 
+      destination.icao || destination, 
+      altitude, 
+      route,
+      { originCoords, destCoords }
+    );
 
     // Create response in expected format
     const response = {
@@ -44,8 +71,20 @@ const generate = async (req, res) => {
       hf_summary: "Flight plan generated successfully",
       category: "Clear",
       route: {
-        origin: { icao: origin, lat: 40.6413, lon: -73.7781 },
-        destination: { icao: destination, lat: 37.6213, lon: -122.3790 }
+        origin: { 
+          icao: origin.icao || origin, 
+          lat: originCoords.lat, 
+          lon: originCoords.lon,
+          name: originCoords.name,
+          elevation: originCoords.elevation
+        },
+        destination: { 
+          icao: destination.icao || destination, 
+          lat: destCoords.lat, 
+          lon: destCoords.lon,
+          name: destCoords.name,
+          elevation: destCoords.elevation
+        }
       },
       waypoints: waypoints,
       processedAt: new Date().toISOString()

@@ -188,6 +188,113 @@ export const notamAPI = {
   }
 };
 
+// Airport API calls
+export const airportAPI = {
+  /**
+   * Get airport coordinates by ICAO/IATA code
+   * @param {string} code - Airport code (ICAO/IATA/GPS)
+   */
+  getCoordinates: async (code) => {
+    try {
+      const response = await nodeClient.get(`/airports/coordinates/${code}`);
+      return response.data;
+    } catch (error) {
+      console.warn('Airport coordinates lookup failed:', error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Get full airport information
+   * @param {string} code - Airport code (ICAO/IATA/GPS)
+   */
+  getAirportInfo: async (code) => {
+    try {
+      const response = await nodeClient.get(`/airports/lookup/${code}`);
+      return response.data;
+    } catch (error) {
+      console.warn('Airport lookup failed:', error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Get coordinates for multiple airports (route planning)
+   * @param {string[]} codes - Array of airport codes
+   */
+  getRouteCoordinates: async (codes) => {
+    try {
+      const response = await nodeClient.post('/airports/route-coordinates', {
+        airports: codes
+      });
+      return response.data;
+    } catch (error) {
+      console.warn('Route coordinates lookup failed:', error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Calculate distance between two airports
+   * @param {string} from - Origin airport code
+   * @param {string} to - Destination airport code
+   */
+  calculateDistance: async (from, to) => {
+    try {
+      const response = await nodeClient.get(`/airports/distance/${from}/${to}`);
+      return response.data;
+    } catch (error) {
+      console.warn('Distance calculation failed:', error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Search airports by name
+   * @param {string} query - Search query
+   * @param {number} limit - Maximum results (default: 10)
+   */
+  searchByName: async (query, limit = 10) => {
+    try {
+      const response = await nodeClient.get(`/airports/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.warn('Airport search failed:', error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Find nearby airports
+   * @param {number} lat - Latitude
+   * @param {number} lon - Longitude
+   * @param {number} radius - Radius in km (default: 50)
+   * @param {number} limit - Maximum results (default: 10)
+   */
+  findNearby: async (lat, lon, radius = 50, limit = 10) => {
+    try {
+      const response = await nodeClient.get(`/airports/nearby?lat=${lat}&lon=${lon}&radius=${radius}&limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.warn('Nearby airports search failed:', error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Get airport database statistics
+   */
+  getStats: async () => {
+    try {
+      const response = await nodeClient.get('/airports/stats');
+      return response.data;
+    } catch (error) {
+      console.warn('Airport stats failed:', error.message);
+      throw error;
+    }
+  }
+};
+
 // Combined workflow API
 export const briefingAPI = {
   /**
