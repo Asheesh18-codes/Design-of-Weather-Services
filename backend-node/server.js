@@ -8,6 +8,7 @@ const flightPlanRoutes = require('./routes/flightPlanRoutes');
 const notamRoutes = require('./routes/notamRoutes');
 const airportRoutes = require('./routes/airportRoutes');
 const severityController = require('./controllers/severityController');
+const apiFetcher = require('./utils/apiFetcher');
 
 // Initialize Express app
 const app = express();
@@ -41,9 +42,33 @@ app.get('/', (req, res) => {
       flightPlan: '/api/flightplan',
       notam: '/api/notam',
       airports: '/api/airports',
-      severity: '/api/severity'
+      severity: '/api/severity',
+      health: '/api/health'
     }
   });
+});
+
+// Detailed health check endpoint
+app.get('/api/health', async (req, res) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    services: {
+      primary_weather_api: 'unknown',
+      checkwx_backup_api: 'unknown',
+      python_nlp_service: process.env.PYTHON_NLP_URL || 'not configured'
+    }
+  };
+
+  // Test CheckWX backup API
+  try {
+    const checkwxStatus = await apiFetcher.testCheckWXConnection();
+    health.services.checkwx_backup_api = checkwxStatus ? 'available' : 'unavailable';
+  } catch (error) {
+    health.services.checkwx_backup_api = 'error: ' + error.message;
+  }
+
+  res.json(health);
 });
 
 // API Routes
@@ -75,7 +100,7 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🛫 Aviation Weather Briefing API running on port ${PORT}`);
   console.log(`📡 Server started at: http://localhost:${PORT}`);
   console.log(`🌤️  Weather endpoint: http://localhost:${PORT}/api/weather`);
@@ -83,6 +108,10 @@ app.listen(PORT, () => {
   console.log(`📋 NOTAM endpoint: http://localhost:${PORT}/api/notam`);
   console.log(`🛩️  Airport database: http://localhost:${PORT}/api/airports`);
   console.log(`⚡ Severity endpoint: http://localhost:${PORT}/api/severity`);
+  
+  // Test backup API connections
+  console.log('\n🔧 Testing backup API connections...');
+  await apiFetcher.testCheckWXConnection();
 });
 
 module.exports = app;

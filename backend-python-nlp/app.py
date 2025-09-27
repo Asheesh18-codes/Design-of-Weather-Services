@@ -119,6 +119,21 @@ class SummarizeResponse(BaseModel):
     processed_by: str = "Python NLP Service"
     processed_at: str
 
+class TAFProcessRequest(BaseModel):
+    taf_text: str
+    icao: Optional[str] = None
+    
+class TAFProcessResponse(BaseModel):
+    success: bool
+    icao: Optional[str] = None
+    raw_taf: str
+    summary: str
+    key_points: List[str]
+    severity: str
+    recommendations: List[str]
+    processed_by: str = "Python NLP Service"
+    processed_at: str
+
 
 # Airport info endpoint
 @app.get("/api/airport-info")
@@ -348,6 +363,145 @@ def _assess_severity(text: str) -> str:
         return "MEDIUM"
     
     # Default to low
+    return "LOW"
+
+@app.post("/nlp/process-taf", response_model=TAFProcessResponse)
+async def process_taf(request: TAFProcessRequest):
+    """
+    Process TAF data with NLP summarization and analysis
+    """
+    try:
+        logger.info(f"Processing TAF for {request.icao or 'unknown airport'}")
+        
+        # Get summarizer
+        summarizer = get_weather_summarizer()
+        
+        if summarizer:
+            try:
+                # Use NLP summarizer for TAF
+                summary = summarizer.summarize_taf(request.taf_text)
+                key_points = _extract_taf_key_points(request.taf_text)
+                recommendations = _generate_taf_recommendations(request.taf_text)
+                severity = _assess_taf_severity(request.taf_text)
+                
+                return TAFProcessResponse(
+                    success=True,
+                    icao=request.icao,
+                    raw_taf=request.taf_text,
+                    summary=summary,
+                    key_points=key_points,
+                    severity=severity,
+                    recommendations=recommendations,
+                    processed_at=datetime.now().isoformat()
+                )
+                
+            except Exception as e:
+                logger.warning(f"NLP TAF processing failed: {e}, using fallback")
+                return _fallback_process_taf(request)
+        else:
+            logger.warning("Weather summarizer not available, using fallback")
+            return _fallback_process_taf(request)
+            
+    except Exception as e:
+        logger.error(f"TAF processing error: {e}")
+        raise HTTPException(status_code=500, detail=f"TAF processing failed: {str(e)}")
+
+def _fallback_process_taf(request: TAFProcessRequest) -> TAFProcessResponse:
+    """Fallback TAF processing when NLP service is unavailable"""
+    summary = _generate_basic_taf_summary(request.taf_text)
+    key_points = _extract_taf_key_points(request.taf_text)
+    recommendations = _generate_taf_recommendations(request.taf_text)
+    severity = _assess_taf_severity(request.taf_text)
+    
+    return TAFProcessResponse(
+        success=True,
+        icao=request.icao,
+        raw_taf=request.taf_text,
+        summary=summary,
+        key_points=key_points,
+        severity=severity,
+        recommendations=recommendations,
+        processed_at=datetime.now().isoformat()
+    )
+
+def _generate_basic_taf_summary(taf_text: str) -> str:
+    """Generate basic TAF summary using rule-based approach"""
+    upper_text = taf_text.upper()
+    
+    # Extract airport code
+    airport_match = re.search(r'TAF ([A-Z]{4})', upper_text)
+    airport = airport_match.group(1) if airport_match else "airport"
+    
+    summary_parts = [f"TAF for {airport}:"]
+    
+    # Check for weather phenomena
+    if 'TS' in upper_text:
+        summary_parts.append("thunderstorms forecast")
+    if 'RA' in upper_text:
+        summary_parts.append("rain expected")
+    if 'SN' in upper_text:
+        summary_parts.append("snow conditions")
+    if 'FG' in upper_text:
+        summary_parts.append("fog possible")
+        
+    # Check for changing conditions
+    if 'TEMPO' in upper_text:
+        summary_parts.append("temporary conditions expected")
+    if 'BECMG' in upper_text:
+        summary_parts.append("gradual changes forecast")
+    if 'FM' in upper_text:
+        summary_parts.append("conditions changing")
+        
+    return " • ".join(summary_parts) if len(summary_parts) > 1 else f"Forecast conditions available for {airport}"
+
+def _extract_taf_key_points(taf_text: str) -> List[str]:
+    """Extract key points from TAF"""
+    upper_text = taf_text.upper()
+    key_points = []
+    
+    if 'TS' in upper_text:
+        key_points.append("Thunderstorms forecast")
+    if 'TEMPO' in upper_text:
+        key_points.append("Temporary conditions expected")
+    if 'BECMG' in upper_text:
+        key_points.append("Conditions becoming")
+    if re.search(r'\d{2}G\d{2}', upper_text):
+        key_points.append("Gusty winds forecast")
+    if re.search(r'[0-9]+SM', upper_text):
+        vis_match = re.search(r'([0-9]+)SM', upper_text)
+        if vis_match and int(vis_match.group(1)) < 3:
+            key_points.append("Reduced visibility expected")
+            
+    return key_points[:5]
+
+def _generate_taf_recommendations(taf_text: str) -> List[str]:
+    """Generate recommendations based on TAF content"""
+    upper_text = taf_text.upper()
+    recommendations = []
+    
+    if 'TS' in upper_text:
+        recommendations.append("Plan for thunderstorm avoidance procedures")
+    if re.search(r'\d{2}G\d{2}', upper_text):
+        recommendations.append("Monitor crosswind limitations")
+    if 'TEMPO' in upper_text or 'BECMG' in upper_text:
+        recommendations.append("Check alternate airports for changing conditions")
+    if re.search(r'[0-2]SM', upper_text):
+        recommendations.append("Consider IFR approach procedures for low visibility")
+        
+    return recommendations[:3]
+
+def _assess_taf_severity(taf_text: str) -> str:
+    """Assess TAF severity level"""
+    upper_text = taf_text.upper()
+    
+    # High severity
+    if any(term in upper_text for term in ['TS', '+RA', '+SN']):
+        return "HIGH"
+    
+    # Medium severity
+    if any(term in upper_text for term in ['TEMPO', 'BECMG', '-RA', 'BKN', 'OVC']):
+        return "MEDIUM"
+    
     return "LOW"
 
 # Run the application

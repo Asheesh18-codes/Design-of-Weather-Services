@@ -1,20 +1,53 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { airportAPI, weatherAPI } from "../services/api";
-  const fetchMetarTaf = async (icao, setMetar, setTaf, setLoading) => {
-    if (!icao || icao.length !== 4) return;
-    setLoading && setLoading(true);
-    try {
-      const [metarRes, tafRes] = await Promise.all([
-        weatherAPI.getLatestMetar ? weatherAPI.getLatestMetar(icao) : weatherAPI.decodeMetar({ icao, metarString: undefined }),
-        weatherAPI.getLatestTaf ? weatherAPI.getLatestTaf(icao) : weatherAPI.decodeTaf({ icao, tafString: undefined })
-      ]);
-      if (metarRes && (metarRes.metar || metarRes.raw)) setMetar(metarRes.metar || metarRes.raw);
-      if (tafRes && (tafRes.taf || tafRes.raw)) setTaf(tafRes.taf || tafRes.raw);
-    } catch (e) {
-      onError && onError("Failed to fetch METAR/TAF for " + icao);
+
+// Weather data persistence utilities
+const STORAGE_KEYS = {
+  DEP_TAF: 'weather_dep_taf',
+  ARR_TAF: 'weather_arr_taf',
+  DEP_METAR: 'weather_dep_metar',
+  ARR_METAR: 'weather_arr_metar',
+  LAST_UPDATE: 'weather_last_update'
+};
+
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes cache duration
+
+// Save weather data to localStorage with timestamp
+const saveWeatherData = (key, data) => {
+  try {
+    const weatherItem = {
+      data: data,
+      timestamp: Date.now(),
+      icao: key.includes('dep') ? 'departure' : 'arrival'
+    };
+    localStorage.setItem(key, JSON.stringify(weatherItem));
+  } catch (e) {
+    console.warn('Failed to save weather data to localStorage:', e);
+  }
+};
+
+// Load weather data from localStorage with expiry check
+const loadWeatherData = (key) => {
+  try {
+    const item = localStorage.getItem(key);
+    if (!item) return null;
+    
+    const weatherItem = JSON.parse(item);
+    const now = Date.now();
+    
+    // Check if data is still valid (within cache duration)
+    if (now - weatherItem.timestamp < CACHE_DURATION) {
+      return weatherItem.data;
+    } else {
+      // Remove expired data
+      localStorage.removeItem(key);
+      return null;
     }
-    setLoading && setLoading(false);
-  };
+  } catch (e) {
+    console.warn('Failed to load weather data from localStorage:', e);
+    return null;
+  }
+};
 
 export default function FlightForm({ onSubmit, onError, loading, onWeatherChange }) {
   // Weather autofill loading states
@@ -22,36 +55,178 @@ export default function FlightForm({ onSubmit, onError, loading, onWeatherChange
   const [loadingArrWx, setLoadingArrWx] = useState(false);
   // Auto-fetch toggle
   const [autoFetch, setAutoFetch] = useState(true);
+  
+  // Refs to track last successful TAF data to prevent accidental clearing
+  const lastDepTafRef = useRef("");
+  const lastArrTafRef = useRef("");
+  const lastUpdateTimeRef = useRef(0);
+  const userInteractionTimeRef = useRef(0);
+  
+  // Track user interactions to avoid refreshing during active use
+  const updateUserInteraction = () => {
+    userInteractionTimeRef.current = Date.now();
+  };
+  
+  // Check if enough time has passed since last update and user isn't actively interacting
+  const shouldRefresh = () => {
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
+    const timeSinceUserInteraction = now - userInteractionTimeRef.current;
+    
+    // Don't refresh if:
+    // 1. Updated less than 2 minutes ago
+    // 2. User interacted less than 30 seconds ago
+    return timeSinceLastUpdate > 2 * 60 * 1000 && timeSinceUserInteraction > 30 * 1000;
+  };
 
-  // Fetch METAR/TAF for a given ICAO and set state
-  const fetchMetarTaf = async (icao, setMetar, setTaf, setLoading) => {
+  // Fetch METAR/TAF for a given ICAO and set state with validation and smart refresh
+  const fetchMetarTaf = async (icao, setMetar, setTaf, setLoading, tafRef, forceRefresh = false) => {
     if (!icao || icao.length !== 4) return;
+    
+    // Check if we should skip refresh due to timing
+    if (!forceRefresh && !shouldRefresh()) {
+      console.log(`Skipping refresh for ${icao} - too recent or user is active`);
+      return;
+    }
+    
     setLoading && setLoading(true);
+    lastUpdateTimeRef.current = Date.now();
+    
     try {
       const [metarRes, tafRes] = await Promise.all([
         weatherAPI.getLatestMetar ? weatherAPI.getLatestMetar(icao) : weatherAPI.decodeMetar({ icao, metarString: undefined }),
         weatherAPI.getLatestTaf ? weatherAPI.getLatestTaf(icao) : weatherAPI.decodeTaf({ icao, tafString: undefined })
       ]);
-      if (metarRes && (metarRes.metar || metarRes.raw)) setMetar(metarRes.metar || metarRes.raw);
-      if (tafRes && (tafRes.taf || tafRes.raw)) setTaf(tafRes.taf || tafRes.raw);
+      
+      // Handle METAR response with validation
+      if (metarRes && (metarRes.metar || metarRes.raw)) {
+        const metarData = metarRes.metar || metarRes.raw;
+        if (metarData && metarData.trim() && metarData !== 'N/A') {
+          setMetar(metarData);
+          // Save METAR to localStorage if setters support it
+          if (setMetar === setDepMetarWithStorage || setMetar === setArrMetarWithStorage) {
+            setMetar(metarData);
+          }
+        }
+      }
+      
+      // Handle TAF response with enhanced validation
+      if (tafRes) {
+        let tafData;
+        let hasValidForecastPeriods = false;
+        
+        if (typeof tafRes === 'object' && tafRes.raw) {
+          // Direct raw response
+          tafData = tafRes.raw;
+        } else if (typeof tafRes === 'object' && tafRes.forecast) {
+          // Enhanced forecast object with NLP - preserve the entire object for later use
+          tafData = JSON.stringify(tafRes.forecast);
+          // Check if forecast has valid periods
+          try {
+            const parsed = typeof tafRes.forecast === 'string' ? JSON.parse(tafRes.forecast) : tafRes.forecast;
+            hasValidForecastPeriods = parsed.periods && parsed.periods.length > 0;
+          } catch (e) {
+            console.warn('Failed to parse forecast periods:', e);
+          }
+        } else if (typeof tafRes === 'string') {
+          // Raw TAF string - check if it contains forecast periods
+          tafData = tafRes;
+          hasValidForecastPeriods = tafData.includes('FM') || tafData.includes('TEMPO') || tafData.includes('BECMG');
+        } else if (tafRes.taf) {
+          // Legacy format
+          tafData = tafRes.taf;
+          hasValidForecastPeriods = tafData.includes('FM') || tafData.includes('TEMPO') || tafData.includes('BECMG');
+        }
+        
+        // Enhanced validation: Only update TAF if we have meaningful data AND forecast periods
+        if (tafData && tafData.trim() && tafData !== 'N/A') {
+          // If new data lacks forecast periods, prefer existing data that has them
+          const existingData = tafRef ? tafRef.current : null;
+          const existingHasPeriods = existingData && (
+            existingData.includes('FM') || 
+            existingData.includes('TEMPO') || 
+            existingData.includes('BECMG') ||
+            (existingData.includes('periods') && existingData.includes('['))
+          );
+          
+          // Only replace existing data if new data has forecast periods OR if no existing data
+          if (hasValidForecastPeriods || !existingHasPeriods || !existingData) {
+            setTaf(tafData);
+            if (tafRef) tafRef.current = tafData;
+            console.log(`TAF data set for ${icao} (has periods: ${hasValidForecastPeriods}):`, tafData.substring(0, 100) + '...');
+          } else {
+            console.warn(`New TAF data for ${icao} lacks forecast periods, keeping existing data with periods`);
+            // Keep existing data
+            if (existingData) {
+              setTaf(existingData);
+            }
+          }
+        } else {
+          console.warn('No valid TAF data received for', icao, ', keeping existing data');
+          // If we have previous data, use it
+          if (tafRef && tafRef.current) {
+            setTaf(tafRef.current);
+            console.log('Restored previous TAF data for', icao);
+          }
+        }
+      }
     } catch (e) {
+      console.error('fetchMetarTaf error for', icao, ':', e);
       onError && onError("Failed to fetch METAR/TAF for " + icao);
+      // If we have previous data, restore it
+      if (tafRef && tafRef.current) {
+        setTaf(tafRef.current);
+        console.log('Restored TAF data after error for', icao);
+      }
+    } finally {
+      setLoading && setLoading(false);
     }
-    setLoading && setLoading(false);
   };
-  // Departure
+  // Initialize state with cached data from localStorage
   const [origin, setOrigin] = useState("");
-  const [depMetar, setDepMetar] = useState("");
-  const [depTaf, setDepTaf] = useState("");
+  const [depMetar, setDepMetar] = useState(() => loadWeatherData(STORAGE_KEYS.DEP_METAR) || "");
+  const [depTaf, setDepTaf] = useState(() => loadWeatherData(STORAGE_KEYS.DEP_TAF) || "");
   const [depNotam, setDepNotam] = useState("");
   // Enroute
   const [sigmets, setSigmets] = useState("");
   const [pireps, setPireps] = useState("");
   // Arrival
   const [destination, setDestination] = useState("");
-  const [arrMetar, setArrMetar] = useState("");
-  const [arrTaf, setArrTaf] = useState("");
+  const [arrMetar, setArrMetar] = useState(() => loadWeatherData(STORAGE_KEYS.ARR_METAR) || "");
+  const [arrTaf, setArrTaf] = useState(() => loadWeatherData(STORAGE_KEYS.ARR_TAF) || "");
   const [arrNotam, setArrNotam] = useState("");
+
+  // Initialize refs with cached data
+  useEffect(() => {
+    const cachedDepTaf = loadWeatherData(STORAGE_KEYS.DEP_TAF);
+    const cachedArrTaf = loadWeatherData(STORAGE_KEYS.ARR_TAF);
+    if (cachedDepTaf) lastDepTafRef.current = cachedDepTaf;
+    if (cachedArrTaf) lastArrTafRef.current = cachedArrTaf;
+  }, []);
+
+  // Enhanced TAF setters that also update the refs and localStorage for persistence
+  const setDepTafWithRef = (value) => {
+    setDepTaf(value);
+    lastDepTafRef.current = value;
+    saveWeatherData(STORAGE_KEYS.DEP_TAF, value);
+  };
+  
+  const setArrTafWithRef = (value) => {
+    setArrTaf(value);
+    lastArrTafRef.current = value;
+    saveWeatherData(STORAGE_KEYS.ARR_TAF, value);
+  };
+
+  // Enhanced METAR setters for consistency
+  const setDepMetarWithStorage = (value) => {
+    setDepMetar(value);
+    saveWeatherData(STORAGE_KEYS.DEP_METAR, value);
+  };
+  
+  const setArrMetarWithStorage = (value) => {
+    setArrMetar(value);
+    saveWeatherData(STORAGE_KEYS.ARR_METAR, value);
+  };
 
   // Dynamic weather update
   useEffect(() => {
@@ -84,7 +259,7 @@ export default function FlightForm({ onSubmit, onError, loading, onWeatherChange
           setOriginLookup("ok");
           // Auto-fetch METAR/TAF if toggle is ON
           if (autoFetch) {
-            fetchMetarTaf(origin.toUpperCase(), setDepMetar, setDepTaf, setLoadingDepWx);
+            fetchMetarTaf(origin.toUpperCase(), setDepMetar, setDepTafWithRef, setLoadingDepWx, lastDepTafRef);
           }
         } else {
           setOriginInfo(null);
@@ -113,7 +288,7 @@ export default function FlightForm({ onSubmit, onError, loading, onWeatherChange
           setDestLookup("ok");
           // Auto-fetch METAR/TAF if toggle is ON
           if (autoFetch) {
-            fetchMetarTaf(destination.toUpperCase(), setArrMetar, setArrTaf, setLoadingArrWx);
+            fetchMetarTaf(destination.toUpperCase(), setArrMetar, setArrTafWithRef, setLoadingArrWx, lastArrTafRef);
           }
         } else {
           setDestInfo(null);
@@ -164,7 +339,7 @@ export default function FlightForm({ onSubmit, onError, loading, onWeatherChange
   const fillDemo = () => {
     setOrigin("KORD");
     setDepMetar("KORD 271651Z 18005KT 10SM FEW020 SCT250 25/12 A3012 RMK AO2 SLP200");
-    setDepTaf(`TAF KORD 271120Z 2712/2818 17008KT P6SM SCT025
+    setDepTafWithRef(`TAF KORD 271120Z 2712/2818 17008KT P6SM SCT025
       FM271800 20012KT P6SM BKN035
       FM280000 22010KT P6SM SCT050`);
     setDepNotam("RWY 10L/28R CLSD 1200-1800Z DLY; TWY B CLSD BTN B2 AND B3");
@@ -174,7 +349,7 @@ SIGMET OSCAR 1 VALID 271900/272300 KZLA- SEV ICE FCST BTN FL120 AND FL200`);
 UA /OV ORD180020 /TM 2000 /FL060 /TP E145 /TB LGT-MOD CHOP /IC NEG /SK SCT040`);
     setDestination("KSFO");
     setArrMetar("KSFO 271656Z 29010KT 10SM FEW008 SCT250 18/12 A3005 RMK AO2 SLP176");
-    setArrTaf(`TAF KSFO 271130Z 2712/2818 30008KT P6SM FEW008 SCT250
+    setArrTafWithRef(`TAF KSFO 271130Z 2712/2818 30008KT P6SM FEW008 SCT250
       FM271800 32012KT P6SM BKN015
       FM280000 28010KT P6SM SCT020`);
     setArrNotam("RWY 28L/10R CLSD 1400-2000Z DLY; ILS RWY 28R U/S");
@@ -183,13 +358,13 @@ UA /OV ORD180020 /TM 2000 /FL060 /TP E145 /TB LGT-MOD CHOP /IC NEG /SK SCT040`);
   const clearForm = () => {
     setOrigin("");
     setDepMetar("");
-    setDepTaf("");
+    setDepTafWithRef("");
     setDepNotam("");
     setSigmets("");
     setPireps("");
     setDestination("");
     setArrMetar("");
-    setArrTaf("");
+    setArrTafWithRef("");
     setArrNotam("");
   };
 
@@ -199,6 +374,31 @@ UA /OV ORD180020 /TM 2000 /FL060 /TP E145 /TB LGT-MOD CHOP /IC NEG /SK SCT040`);
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
         <label style={{fontWeight:600, color:'var(--accent-600)'}}>Auto-fetch METAR/TAF</label>
         <input type="checkbox" checked={autoFetch} onChange={e=>setAutoFetch(e.target.checked)} style={{width:18,height:18}} />
+        
+        <button
+          type="button"
+          onClick={() => {
+            if (origin && origin.length === 4) {
+              fetchMetarTaf(origin.toUpperCase(), setDepMetarWithStorage, setDepTafWithRef, setLoadingDepWx, lastDepTafRef, true);
+            }
+            if (destination && destination.length === 4) {
+              fetchMetarTaf(destination.toUpperCase(), setArrMetarWithStorage, setArrTafWithRef, setLoadingArrWx, lastArrTafRef, true);
+            }
+          }}
+          disabled={(!origin || origin.length !== 4) && (!destination || destination.length !== 4)}
+          style={{
+            padding: '4px 8px',
+            fontSize: '12px',
+            background: 'var(--accent-600)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            marginLeft: '12px'
+          }}
+        >
+          🔄 Refresh Weather
+        </button>
       </div>
       <form onSubmit={handleSubmit} className="flight-form">
         {/* Departure Section */}
@@ -236,7 +436,18 @@ UA /OV ORD180020 /TM 2000 /FL060 /TP E145 /TB LGT-MOD CHOP /IC NEG /SK SCT040`);
           </div>
           <div className="form-row">
             <label className="label">TAF *</label>
-            <textarea className="input textarea" value={depTaf} onChange={(e) => setDepTaf(e.target.value)} placeholder="Paste TAF report..." rows={2} required />
+            <textarea 
+              className="input textarea" 
+              value={depTaf} 
+              onChange={(e) => {
+                updateUserInteraction();
+                setDepTafWithRef(e.target.value);
+              }}
+              onFocus={updateUserInteraction}
+              placeholder="Paste TAF report..." 
+              rows={2} 
+              required 
+            />
           </div>
           <div className="form-row">
             <label className="label">NOTAMs (optional)</label>
@@ -294,7 +505,18 @@ UA /OV ORD180020 /TM 2000 /FL060 /TP E145 /TB LGT-MOD CHOP /IC NEG /SK SCT040`);
           </div>
           <div className="form-row">
             <label className="label">TAF *</label>
-            <textarea className="input textarea" value={arrTaf} onChange={(e) => setArrTaf(e.target.value)} placeholder="Paste TAF report..." rows={2} required />
+            <textarea 
+              className="input textarea" 
+              value={arrTaf} 
+              onChange={(e) => {
+                updateUserInteraction();
+                setArrTafWithRef(e.target.value);
+              }}
+              onFocus={updateUserInteraction}
+              placeholder="Paste TAF report..." 
+              rows={2} 
+              required 
+            />
           </div>
           <div className="form-row">
             <label className="label">NOTAMs (optional)</label>

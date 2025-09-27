@@ -99,8 +99,8 @@ export const weatherAPI = {
     if (!icao || icao.length !== 4) throw new Error('Valid ICAO required');
     try {
       const response = await nodeClient.get(`/weather/forecast/${icao}`);
-      // Return the raw TAF string for compatibility
-      return response.data.forecast?.raw ? { raw: response.data.forecast.raw } : { raw: 'N/A' };
+      // Return the full forecast object with NLP enhancements
+      return response.data.forecast ? response.data.forecast : { raw: 'N/A' };
     } catch (error) {
       console.warn('getLatestTaf failed:', error.message);
       return { raw: 'N/A' };
