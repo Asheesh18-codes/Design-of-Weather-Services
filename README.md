@@ -72,6 +72,11 @@ cp .env.example .env
 
 # Edit .env file with your API keys
 # WEATHER_API_KEY=your_checkwx_api_key_here
+
+# Frontend environment for Mapbox
+cd frontend-react
+# Create .env file and add:  
+# VITE_MAPBOX_TOKEN=your_mapbox_access_token_here
 ```
 
 ### 3. Install Dependencies
@@ -167,6 +172,11 @@ PYTHON_NLP_URL=http://localhost:8000
 WEATHER_API_KEY=your_checkwx_api_key
 ```
 
+#### Frontend React (`.env`)
+```env
+VITE_MAPBOX_TOKEN=your_mapbox_access_token
+```
+
 #### Python NLP Service
 ```env
 PORT=8000
@@ -180,7 +190,12 @@ OPENAI_API_KEY=your_openai_key  # Optional for enhanced AI
    - Sign up for free API key
    - Add to `.env` as `WEATHER_API_KEY`
 
-2. **OpenAI API** (Enhanced AI features)
+2. **Mapbox API** (Interactive maps and visualization)
+   - Visit: https://account.mapbox.com/
+   - Create account and get access token
+   - Add to frontend environment as `VITE_MAPBOX_TOKEN`
+
+3. **OpenAI API** (Enhanced AI features)
    - Visit: https://platform.openai.com
    - Generate API key
    - Add to Python service environment
@@ -335,11 +350,21 @@ DEBUG=1 python app.py
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👨‍💻 Author
+## 👨‍💻 Authors
 
-**Asheesh Singh**
+**Asheesh Singh** - *Project Lead*
 - GitHub: [@Asheesh18-codes](https://github.com/Asheesh18-codes)
-- Project: [Design-of-Weather-Services](https://github.com/Asheesh18-codes/Design-of-Weather-Services)
+
+**Devansh Jha** - *Co-developer*
+- GitHub: [@devanshjhaa](https://github.com/devanshjhaa)
+
+**Eshwar Yadu** - *Co-developer*  
+- GitHub: [@eshwar23567](https://github.com/eshwar23567)
+
+**Rishi Dwivedi** - *Co-developer*
+- GitHub: [@rishidwi20](https://github.com/rishidwi20)
+
+**Project Repository**: [Design-of-Weather-Services](https://github.com/Asheesh18-codes/Design-of-Weather-Services)
 
 ## 🙏 Acknowledgments
 
