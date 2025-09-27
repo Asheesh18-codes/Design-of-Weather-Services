@@ -1,3 +1,4 @@
+const axios = require('axios');
 const metarDecoder = require('../utils/metarDecoder');
 const tafDecoder = require('../utils/tafDecoder');
 const apiFetcher = require('../utils/apiFetcher');
@@ -152,6 +153,26 @@ const getWeatherForecast = async (req, res) => {
       return periodHours <= hours;
     });
 
+    // Forward to Python NLP service for enhanced processing
+    let nlpEnhanced = null;
+    try {
+      const pythonBackendUrl = process.env.PYTHON_NLP_URL || 'http://localhost:8000';
+      const nlpResponse = await axios.post(`${pythonBackendUrl}/nlp/process-taf`, {
+        taf_text: tafData.raw,
+        icao: icao.toUpperCase()
+      }, {
+        timeout: 10000,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (nlpResponse.data && nlpResponse.data.success) {
+        nlpEnhanced = nlpResponse.data;
+      }
+    } catch (nlpError) {
+      console.warn(`NLP TAF processing failed for ${icao}:`, nlpError.message);
+      // Continue without NLP enhancement
+    }
+
     res.json({
       success: true,
       airport: icao.toUpperCase(),
@@ -162,7 +183,14 @@ const getWeatherForecast = async (req, res) => {
         severity: forecastSeverity,
         humanReadable: tafDecoder.toHumanReadable(decoded),
         issuedAt: tafData.issueTime,
-        validPeriod: decoded.validPeriod
+        validPeriod: decoded.validPeriod,
+        // Add NLP enhancements if available
+        nlp: nlpEnhanced ? {
+          summary: nlpEnhanced.summary,
+          key_points: nlpEnhanced.key_points,
+          recommendations: nlpEnhanced.recommendations,
+          severity: nlpEnhanced.severity
+        } : null
       },
       fetchedAt: new Date().toISOString()
     });

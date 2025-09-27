@@ -1,20 +1,23 @@
 // API Fetcher Utility
-// Fetches live weather data from AviationWeather.gov and other sources
+// Fetches live weather data from AviationWeather.gov and CheckWX.com backup
 
 const axios = require('axios');
+require('dotenv').config();
 
 // Base URLs for various aviation weather APIs
 const API_ENDPOINTS = {
   aviationWeather: 'https://aviationweather.gov/data/api/',
-  aviationWeatherV1: 'https://aviationweather.gov/adds/dataserver_current/httpparam',
   metarTaf: 'https://tgftp.nws.noaa.gov/data',
-  backup: 'https://api.checkwx.com' // Backup service (requires API key)
+  checkwx: 'https://api.checkwx.com' // CheckWX API backup service
 };
+
+// CheckWX API Configuration
+const CHECKWX_API_KEY = process.env.WEATHER_API_KEY || process.env.CHECKWX_API_KEY;
 
 // Configuration
 const REQUEST_TIMEOUT = 10000; // 10 seconds
 const RETRY_ATTEMPTS = 3;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes - increased to reduce API calls and preserve forecast periods
 
 // Simple in-memory cache
 const cache = new Map();
@@ -50,14 +53,29 @@ const getLatestMetar = async (icao) => {
   } catch (primaryError) {
     console.warn(`Primary METAR API failed for ${icao}:`, primaryError.message);
     
-    // Try backup/mock data
+    // Try CheckWX backup API
     try {
-      const mockData = generateMockMetar(icao.toUpperCase());
-      return mockData;
+      const backupData = await fetchMetarFromCheckWX(icao.toUpperCase());
+      
+      // Cache the backup result
+      cache.set(cacheKey, {
+        data: backupData,
+        timestamp: Date.now()
+      });
+      
+      return backupData;
       
     } catch (backupError) {
-      console.error(`All METAR sources failed for ${icao}:`, backupError.message);
-      throw new Error(`Unable to fetch METAR for ${icao}: ${primaryError.message}`);
+      console.warn(`CheckWX METAR API also failed for ${icao}:`, backupError.message);
+      
+      // Final fallback to mock data
+      try {
+        const mockData = generateMockMetar(icao.toUpperCase());
+        return mockData;
+      } catch (mockError) {
+        console.error(`All METAR sources failed for ${icao}:`, mockError.message);
+        throw new Error(`Unable to fetch METAR for ${icao}: ${primaryError.message}`);
+      }
     }
   }
 };
@@ -93,14 +111,29 @@ const getLatestTaf = async (icao) => {
   } catch (primaryError) {
     console.warn(`Primary TAF API failed for ${icao}:`, primaryError.message);
     
-    // Try backup/mock data
+    // Try CheckWX backup API
     try {
-      const mockData = generateMockTaf(icao.toUpperCase());
-      return mockData;
+      const backupData = await fetchTafFromCheckWX(icao.toUpperCase());
+      
+      // Cache the backup result
+      cache.set(cacheKey, {
+        data: backupData,
+        timestamp: Date.now()
+      });
+      
+      return backupData;
       
     } catch (backupError) {
-      console.error(`All TAF sources failed for ${icao}:`, backupError.message);
-      throw new Error(`Unable to fetch TAF for ${icao}: ${primaryError.message}`);
+      console.warn(`CheckWX TAF API also failed for ${icao}:`, backupError.message);
+      
+      // Final fallback to mock data
+      try {
+        const mockData = generateMockTaf(icao.toUpperCase());
+        return mockData;
+      } catch (mockError) {
+        console.error(`All TAF sources failed for ${icao}:`, mockError.message);
+        throw new Error(`Unable to fetch TAF for ${icao}: ${primaryError.message}`);
+      }
     }
   }
 };
@@ -183,6 +216,161 @@ const getNotamsForAirport = async (icao) => {
   }
 };
 
+// CheckWX API backup functions
+
+async function fetchMetarFromCheckWX(icao) {
+  if (!CHECKWX_API_KEY) {
+    throw new Error('CheckWX API key not configured');
+  }
+
+  const url = `${API_ENDPOINTS.checkwx}/metar/${icao}/decoded`;
+  
+  try {
+    console.log(`Fetching METAR from CheckWX backup API for ${icao}...`);
+    const response = await axios.get(url, {
+      timeout: REQUEST_TIMEOUT,
+      headers: {
+        'X-API-Key': CHECKWX_API_KEY,
+        'User-Agent': 'Aviation Weather Briefing App'
+      }
+    });
+
+    if (response.data && response.data.data && response.data.data.length > 0) {
+      const metarData = response.data.data[0];
+      console.log(`✅ CheckWX METAR backup successful for ${icao}`);
+      return {
+        raw: metarData.raw_text || metarData.text,
+        observationTime: metarData.observed || metarData.observation_time,
+        station: metarData.icao || metarData.station,
+        coordinates: {
+          lat: metarData.station?.geometry?.coordinates?.[1] || null,
+          lon: metarData.station?.geometry?.coordinates?.[0] || null
+        }
+      };
+    }
+
+    throw new Error(`No CheckWX METAR data available for ${icao}`);
+  } catch (error) {
+    if (error.response?.status === 401) {
+      throw new Error('CheckWX API key is invalid');
+    } else if (error.response?.status === 429) {
+      throw new Error('CheckWX API rate limit exceeded');
+    }
+    throw new Error(`CheckWX METAR API error: ${error.message}`);
+  }
+}
+
+async function fetchTafFromCheckWX(icao) {
+  if (!CHECKWX_API_KEY) {
+    throw new Error('CheckWX API key not configured');
+  }
+
+  const url = `${API_ENDPOINTS.checkwx}/taf/${icao}/decoded`;
+  
+  try {
+    console.log(`🌐 Fetching TAF from CheckWX backup API: ${url}`);
+    const response = await axios.get(url, {
+      timeout: REQUEST_TIMEOUT,
+      headers: {
+        'X-API-Key': CHECKWX_API_KEY,
+        'User-Agent': 'Aviation Weather Briefing App'
+      }
+    });
+
+    console.log(`📡 CheckWX TAF API Response Status: ${response.status}`);
+    console.log(`📊 CheckWX TAF API Response:`, response.data?.data?.length || 0, 'items');
+
+    if (response.data && response.data.data && response.data.data.length > 0) {
+      const tafData = response.data.data[0];
+      console.log(`✅ CheckWX TAF backup successful for ${icao}`);
+      console.log(`📊 CheckWX TAF data structure:`, Object.keys(tafData));
+      
+      return {
+        raw: tafData.raw_text || tafData.text || tafData.raw,
+        issueTime: tafData.timestamp?.issued || tafData.issue_time,
+        station: tafData.icao || tafData.station,
+        validTime: tafData.timestamp?.from || tafData.valid_time_from
+      };
+    }
+
+    throw new Error(`No CheckWX TAF data available for ${icao}`);
+  } catch (error) {
+    console.log(`❌ CheckWX TAF API Error:`, error.response?.status, error.message);
+    if (error.response?.status === 401) {
+      throw new Error('CheckWX API key is invalid');
+    } else if (error.response?.status === 429) {
+      throw new Error('CheckWX API rate limit exceeded');
+    }
+    throw new Error(`CheckWX TAF API error: ${error.message}`);
+  }
+}
+
+// Debug function to test TAF fetching
+const debugTafFetching = async (icao) => {
+  console.log(`🔍 Debugging TAF fetching for ${icao}...`);
+  
+  // Test primary API
+  console.log('\n1️⃣ Testing Primary Aviation Weather API...');
+  try {
+    const primaryResult = await fetchTafFromPrimary(icao);
+    console.log('✅ Primary API Success:', primaryResult);
+  } catch (primaryError) {
+    console.log('❌ Primary API Failed:', primaryError.message);
+    
+    // Test CheckWX backup
+    console.log('\n2️⃣ Testing CheckWX Backup API...');
+    try {
+      const backupResult = await fetchTafFromCheckWX(icao);
+      console.log('✅ CheckWX Backup Success:', backupResult);
+    } catch (backupError) {
+      console.log('❌ CheckWX Backup Failed:', backupError.message);
+      
+      // Test mock data
+      console.log('\n3️⃣ Testing Mock Data Fallback...');
+      try {
+        const mockResult = generateMockTaf(icao);
+        console.log('✅ Mock Data Success:', mockResult);
+      } catch (mockError) {
+        console.log('❌ Mock Data Failed:', mockError.message);
+      }
+    }
+  }
+};
+
+// Test CheckWX API connectivity
+const testCheckWXConnection = async () => {
+  if (!CHECKWX_API_KEY) {
+    console.warn('⚠️  CheckWX API key not configured - backup weather service unavailable');
+    return false;
+  }
+
+  try {
+    // Test with a common airport
+    const testUrl = `${API_ENDPOINTS.checkwx}/metar/KJFK`;
+    const response = await axios.get(testUrl, {
+      timeout: 5000,
+      headers: {
+        'X-API-Key': CHECKWX_API_KEY,
+        'User-Agent': 'Aviation Weather Briefing App'
+      }
+    });
+
+    if (response.status === 200) {
+      console.log('✅ CheckWX backup API connection successful');
+      return true;
+    }
+  } catch (error) {
+    if (error.response?.status === 401) {
+      console.error('❌ CheckWX API key is invalid');
+    } else if (error.response?.status === 429) {
+      console.warn('⚠️  CheckWX API rate limit - backup available but limited');
+    } else {
+      console.warn('⚠️  CheckWX API connection test failed:', error.message);
+    }
+  }
+  return false;
+};
+
 // Private helper functions
 
 async function fetchMetarFromPrimary(icao) {
@@ -219,32 +407,44 @@ async function fetchMetarFromPrimary(icao) {
 }
 
 async function fetchTafFromPrimary(icao) {
-  const url = `${API_ENDPOINTS.aviationWeather}/taf`;
+  // Try the correct aviationweather.gov API endpoint
+  const url = `${API_ENDPOINTS.aviationWeather}taf`;
   const params = {
     ids: icao,
-    format: 'json',
-    metar: 'false'
+    format: 'json'
   };
 
-  const response = await axios.get(url, {
-    params,
-    timeout: REQUEST_TIMEOUT,
-    headers: {
-      'User-Agent': 'Aviation Weather Briefing App'
+  console.log(`🌐 Fetching TAF from primary API: ${url}?${new URLSearchParams(params)}`);
+
+  try {
+    const response = await axios.get(url, {
+      params,
+      timeout: REQUEST_TIMEOUT,
+      headers: {
+        'User-Agent': 'Aviation Weather Briefing App'
+      }
+    });
+
+    console.log(`📡 Primary TAF API Response Status: ${response.status}`);
+    console.log(`📊 Primary TAF API Response Length: ${response.data?.length || 0}`);
+
+    if (response.data && response.data.length > 0) {
+      const tafData = response.data[0];
+      console.log(`✅ Primary TAF data structure:`, Object.keys(tafData));
+      
+      return {
+        raw: tafData.rawTAF || tafData.raw_text || tafData.raw,
+        issueTime: tafData.issueTime || tafData.issue_time || tafData.bulletinTime,
+        station: tafData.icaoId || tafData.station_id || tafData.stationId,
+        validTime: tafData.validTime || tafData.valid_time_from || tafData.validTimeFrom
+      };
     }
-  });
 
-  if (response.data && response.data.length > 0) {
-    const tafData = response.data[0];
-    return {
-      raw: tafData.rawTAF || tafData.raw_text,
-      issueTime: tafData.issueTime || tafData.issue_time,
-      station: tafData.icaoId || tafData.station_id,
-      validTime: tafData.validTime || tafData.valid_time_from
-    };
+    throw new Error(`No TAF data available for ${icao} from primary API`);
+  } catch (error) {
+    console.log(`❌ Primary TAF API Error:`, error.response?.status, error.message);
+    throw error;
   }
-
-  throw new Error(`No TAF data available for ${icao}`);
 }
 
 async function findNearestAirport(lat, lon) {
@@ -417,6 +617,8 @@ module.exports = {
   clearCache,
   getCacheStats,
   getAirportInfoFromNLP,
+  testCheckWXConnection,
+  debugTafFetching,
   // Export for testing
   generateMockMetar,
   generateMockTaf,

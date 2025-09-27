@@ -21,6 +21,51 @@ function formatTemp(t) {
   return `${t}°C`;
 }
 
+// Helper function to check if TAF has NLP enhancements
+function hasNLPEnhancements(taf) {
+  try {
+    if (typeof taf === 'string') {
+      // Try to parse if it's a JSON string
+      const parsed = JSON.parse(taf);
+      return parsed.nlp && parsed.nlp.summary;
+    } else if (typeof taf === 'object' && taf.nlp) {
+      return true;
+    }
+  } catch (e) {
+    // Not JSON, treat as raw TAF
+  }
+  return false;
+}
+
+// Helper function to extract TAF data
+function getTAFData(taf) {
+  try {
+    if (typeof taf === 'string') {
+      try {
+        // Try to parse as JSON first (enhanced data from API)
+        const parsed = JSON.parse(taf);
+        return parsed;
+      } catch (e) {
+        // Not JSON, parse as raw TAF string
+        const parsed = parseTaf(taf);
+        return {
+          raw: taf,
+          validPeriod: parsed?.parsed?.validPeriod,
+          periods: parsed?.parsed?.periods,
+          parsed: parsed?.parsed
+        };
+      }
+    } else if (typeof taf === 'object') {
+      // Already an object
+      return taf;
+    }
+  } catch (e) {
+    console.error('TAF parsing error:', e);
+    return { raw: taf || 'N/A' };
+  }
+  return { raw: taf || 'N/A' };
+}
+
 export default function App() {
   const [result, setResult] = useState(null);
   const [liveWeather, setLiveWeather] = useState({ depMetar: '', arrMetar: '', depTaf: '', arrTaf: '', depNotam: '', arrNotam: '', sigmets: '', pireps: '' });
@@ -242,16 +287,32 @@ export default function App() {
           <h4 style={{marginTop:0, color:'var(--accent-600)'}}>Live Weather Preview</h4>
           <div style={{fontSize:13, color:'#0f172a'}}>
             <div>
-              <strong>Departure METAR:</strong> {previewWeather.depMetar ? (parseMetar(previewWeather.depMetar)?.summary || previewWeather.depMetar) : '—'}
+              <strong>Departure METAR:</strong> {previewWeather.depMetar ? (parseMetar(previewWeather.depMetar)?.summary || previewWeather.depMetar.substring(0, 80) + '...') : '—'}
             </div>
             <div>
-              <strong>Departure TAF:</strong> {previewWeather.depTaf ? (parseTaf(previewWeather.depTaf)?.summary || previewWeather.depTaf) : '—'}
+              <strong>Departure TAF:</strong> {(() => {
+                if (!previewWeather.depTaf) return '—';
+                const tafData = getTAFData(previewWeather.depTaf);
+                if (tafData.nlp && tafData.nlp.summary) {
+                  return `🤖 ${tafData.nlp.summary}`;
+                }
+                const summary = parseTaf(tafData.raw || previewWeather.depTaf)?.summary;
+                return summary || (tafData.raw || previewWeather.depTaf).substring(0, 80) + '...';
+              })()}
             </div>
             <div>
-              <strong>Arrival METAR:</strong> {previewWeather.arrMetar ? (parseMetar(previewWeather.arrMetar)?.summary || previewWeather.arrMetar) : '—'}
+              <strong>Arrival METAR:</strong> {previewWeather.arrMetar ? (parseMetar(previewWeather.arrMetar)?.summary || previewWeather.arrMetar.substring(0, 80) + '...') : '—'}
             </div>
             <div>
-              <strong>Arrival TAF:</strong> {previewWeather.arrTaf ? (parseTaf(previewWeather.arrTaf)?.summary || previewWeather.arrTaf) : '—'}
+              <strong>Arrival TAF:</strong> {(() => {
+                if (!previewWeather.arrTaf) return '—';
+                const tafData = getTAFData(previewWeather.arrTaf);
+                if (tafData.nlp && tafData.nlp.summary) {
+                  return `🤖 ${tafData.nlp.summary}`;
+                }
+                const summary = parseTaf(tafData.raw || previewWeather.arrTaf)?.summary;
+                return summary || (tafData.raw || previewWeather.arrTaf).substring(0, 80) + '...';
+              })()}
             </div>
             <div><strong>SIGMETs:</strong> {previewWeather.sigmets || '—'}</div>
             <div><strong>PIREPs:</strong> {previewWeather.pireps || '—'}</div>
@@ -508,17 +569,17 @@ export default function App() {
                             const metarData = parseMetar(result.origin.metar);
                             return (
                               <div className="aviation-summary-text" style={{ fontSize: 14, color: '#13303a' }}>
-                                <div><strong>Conditions:</strong> {metarData.parsed?.flightRules || 'Unknown'}</div>
-                                {metarData.parsed?.temperature && (
+                                <div><strong>Conditions:</strong> {metarData?.parsed?.flightRules || 'Unknown'}</div>
+                                {metarData?.parsed?.temperature && (
                                   <div style={{ marginTop: 4 }}>
                                     <strong>Temperature:</strong> {metarData.parsed.temperature}/{metarData.parsed.dewpoint}
                                   </div>
                                 )}
-                                <div style={{ marginTop: 4 }}><strong>Wind:</strong> {metarData.parsed?.wind || 'Unknown'}</div>
-                                <div style={{ marginTop: 4 }}><strong>Visibility:</strong> {metarData.parsed?.visibility || 'Unknown'}</div>
-                                <div style={{ marginTop: 4 }}><strong>Clouds:</strong> {metarData.parsed?.clouds || 'Unknown'}</div>
+                                <div style={{ marginTop: 4 }}><strong>Wind:</strong> {metarData?.parsed?.wind || 'Unknown'}</div>
+                                <div style={{ marginTop: 4 }}><strong>Visibility:</strong> {metarData?.parsed?.visibility || 'Unknown'}</div>
+                                <div style={{ marginTop: 4 }}><strong>Clouds:</strong> {metarData?.parsed?.clouds || 'Unknown'}</div>
                                 <div style={{ marginTop: 8, fontSize: 11, color: '#666', background: '#f8f9fa', padding: 8, borderRadius: 4, fontFamily: 'monospace' }}>
-                                  {metarData.raw}
+                                  {metarData?.raw || result.origin.metar}
                                 </div>
                               </div>
                             );
@@ -532,12 +593,43 @@ export default function App() {
                             📋 Forecast (TAF)
                           </div>
                           {(() => {
-                            const tafData = parseTaf(result.origin.taf);
+                            const tafData = getTAFData(result.origin.taf);
+                            const hasNLP = tafData.nlp && tafData.nlp.summary;
+                            
                             return (
                               <div className="aviation-summary-text" style={{ fontSize: 14, color: '#13303a' }}>
-                                <div><strong>Valid Period:</strong> {tafData.parsed?.validPeriod || 'Unknown'}</div>
-                                <div style={{ marginTop: 4 }}><strong>Forecast Periods:</strong> {tafData.parsed?.periods?.length || 0}</div>
-                                {tafData.parsed?.periods?.slice(0, 2).map((period, idx) => (
+                                {hasNLP && (
+                                  <div style={{ marginBottom: 12, padding: 10, background: '#e6f3ff', borderRadius: 6, border: '1px solid #b3d9ff' }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0066cc', marginBottom: 6 }}>🤖 AI Summary</div>
+                                    <div style={{ fontSize: 14, marginBottom: 8 }}>{tafData.nlp.summary}</div>
+                                    
+                                    {tafData.nlp.key_points && tafData.nlp.key_points.length > 0 && (
+                                      <div style={{ fontSize: 13 }}>
+                                        <strong>Key Points:</strong>
+                                        <ul style={{ margin: '4px 0 0 0', paddingLeft: 20 }}>
+                                          {tafData.nlp.key_points.map((point, idx) => (
+                                            <li key={idx} style={{ margin: '2px 0' }}>{point}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    
+                                    {tafData.nlp.recommendations && tafData.nlp.recommendations.length > 0 && (
+                                      <div style={{ fontSize: 13, marginTop: 6 }}>
+                                        <strong>Recommendations:</strong>
+                                        <ul style={{ margin: '4px 0 0 0', paddingLeft: 20 }}>
+                                          {tafData.nlp.recommendations.map((rec, idx) => (
+                                            <li key={idx} style={{ margin: '2px 0' }}>{rec}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                <div><strong>Valid Period:</strong> {tafData.validPeriod || tafData.parsed?.validPeriod || 'Unknown'}</div>
+                                <div style={{ marginTop: 4 }}><strong>Forecast Periods:</strong> {tafData.periods?.length || tafData.parsed?.periods?.length || 0}</div>
+                                {(tafData.periods || tafData.parsed?.periods || []).slice(0, 2).map((period, idx) => (
                                   <div key={idx} style={{ marginTop: 8, padding: 8, background: '#f0f9ff', borderRadius: 4 }}>
                                     <div><strong>{period.type}:</strong></div>
                                     <div style={{ fontSize: 13, marginTop: 2 }}>Wind: {period.wind}</div>
@@ -546,7 +638,7 @@ export default function App() {
                                   </div>
                                 ))}
                                 <div style={{ marginTop: 8, fontSize: 11, color: '#666', background: '#f8f9fa', padding: 8, borderRadius: 4, fontFamily: 'monospace' }}>
-                                  {tafData.raw}
+                                  {tafData.raw || result.origin.taf}
                                 </div>
                               </div>
                             );
@@ -727,17 +819,17 @@ export default function App() {
                             const metarData = parseMetar(result.destination.metar);
                             return (
                               <div className="aviation-summary-text" style={{ fontSize: 14, color: '#13303a' }}>
-                                <div><strong>Conditions:</strong> {metarData.parsed?.flightRules || 'Unknown'}</div>
-                                {metarData.parsed?.temperature && (
+                                <div><strong>Conditions:</strong> {metarData?.parsed?.flightRules || 'Unknown'}</div>
+                                {metarData?.parsed?.temperature && (
                                   <div style={{ marginTop: 4 }}>
                                     <strong>Temperature:</strong> {metarData.parsed.temperature}/{metarData.parsed.dewpoint}
                                   </div>
                                 )}
-                                <div style={{ marginTop: 4 }}><strong>Wind:</strong> {metarData.parsed?.wind || 'Unknown'}</div>
-                                <div style={{ marginTop: 4 }}><strong>Visibility:</strong> {metarData.parsed?.visibility || 'Unknown'}</div>
-                                <div style={{ marginTop: 4 }}><strong>Clouds:</strong> {metarData.parsed?.clouds || 'Unknown'}</div>
+                                <div style={{ marginTop: 4 }}><strong>Wind:</strong> {metarData?.parsed?.wind || 'Unknown'}</div>
+                                <div style={{ marginTop: 4 }}><strong>Visibility:</strong> {metarData?.parsed?.visibility || 'Unknown'}</div>
+                                <div style={{ marginTop: 4 }}><strong>Clouds:</strong> {metarData?.parsed?.clouds || 'Unknown'}</div>
                                 <div style={{ marginTop: 8, fontSize: 11, color: '#666', background: '#f8f9fa', padding: 8, borderRadius: 4, fontFamily: 'monospace' }}>
-                                  {metarData.raw}
+                                  {metarData?.raw || result.destination.metar}
                                 </div>
                               </div>
                             );
@@ -750,12 +842,43 @@ export default function App() {
                             📋 Forecast (TAF)
                           </div>
                           {(() => {
-                            const tafData = parseTaf(result.destination.taf);
+                            const tafData = getTAFData(result.destination.taf);
+                            const hasNLP = tafData.nlp && tafData.nlp.summary;
+                            
                             return (
                               <div className="aviation-summary-text" style={{ fontSize: 14, color: '#13303a' }}>
-                                <div><strong>Valid Period:</strong> {tafData.parsed?.validPeriod || 'Unknown'}</div>
-                                <div style={{ marginTop: 4 }}><strong>Forecast Periods:</strong> {tafData.parsed?.periods?.length || 0}</div>
-                                {tafData.parsed?.periods?.slice(0, 2).map((period, idx) => (
+                                {hasNLP && (
+                                  <div style={{ marginBottom: 12, padding: 10, background: '#e6f3ff', borderRadius: 6, border: '1px solid #b3d9ff' }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0066cc', marginBottom: 6 }}>🤖 AI Summary</div>
+                                    <div style={{ fontSize: 14, marginBottom: 8 }}>{tafData.nlp.summary}</div>
+                                    
+                                    {tafData.nlp.key_points && tafData.nlp.key_points.length > 0 && (
+                                      <div style={{ fontSize: 13 }}>
+                                        <strong>Key Points:</strong>
+                                        <ul style={{ margin: '4px 0 0 0', paddingLeft: 20 }}>
+                                          {tafData.nlp.key_points.map((point, idx) => (
+                                            <li key={idx} style={{ margin: '2px 0' }}>{point}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    
+                                    {tafData.nlp.recommendations && tafData.nlp.recommendations.length > 0 && (
+                                      <div style={{ fontSize: 13, marginTop: 6 }}>
+                                        <strong>Recommendations:</strong>
+                                        <ul style={{ margin: '4px 0 0 0', paddingLeft: 20 }}>
+                                          {tafData.nlp.recommendations.map((rec, idx) => (
+                                            <li key={idx} style={{ margin: '2px 0' }}>{rec}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                <div><strong>Valid Period:</strong> {tafData.validPeriod || tafData.parsed?.validPeriod || 'Unknown'}</div>
+                                <div style={{ marginTop: 4 }}><strong>Forecast Periods:</strong> {tafData.periods?.length || tafData.parsed?.periods?.length || 0}</div>
+                                {(tafData.periods || tafData.parsed?.periods || []).slice(0, 2).map((period, idx) => (
                                   <div key={idx} style={{ marginTop: 8, padding: 8, background: '#f0f9ff', borderRadius: 4 }}>
                                     <div><strong>{period.type}:</strong></div>
                                     <div style={{ fontSize: 13, marginTop: 2 }}>Wind: {period.wind}</div>
@@ -764,7 +887,7 @@ export default function App() {
                                   </div>
                                 ))}
                                 <div style={{ marginTop: 8, fontSize: 11, color: '#666', background: '#f8f9fa', padding: 8, borderRadius: 4, fontFamily: 'monospace' }}>
-                                  {tafData.raw}
+                                  {tafData.raw || result.destination.taf}
                                 </div>
                               </div>
                             );
