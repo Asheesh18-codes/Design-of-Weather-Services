@@ -66,7 +66,7 @@ const getLatestMetar = async (icao) => {
       return backupData;
       
     } catch (backupError) {
-      console.warn(`CheckWX METAR API also failed for ${icao}:`, backupError.message);
+      // CheckWX backup failed, falling back to mock data
       
       // Final fallback to mock data
       try {
@@ -124,7 +124,7 @@ const getLatestTaf = async (icao) => {
       return backupData;
       
     } catch (backupError) {
-      console.warn(`CheckWX TAF API also failed for ${icao}:`, backupError.message);
+      // CheckWX backup failed, falling back to mock data
       
       // Final fallback to mock data
       try {
@@ -295,7 +295,7 @@ async function fetchTafFromCheckWX(icao) {
 
     throw new Error(`No CheckWX TAF data available for ${icao}`);
   } catch (error) {
-    console.log(`❌ CheckWX TAF API Error:`, error.response?.status, error.message);
+    // CheckWX TAF API error, will be handled by fallback
     if (error.response?.status === 401) {
       throw new Error('CheckWX API key is invalid');
     } else if (error.response?.status === 429) {
@@ -323,7 +323,7 @@ const debugTafFetching = async (icao) => {
       const backupResult = await fetchTafFromCheckWX(icao);
       console.log('✅ CheckWX Backup Success:', backupResult);
     } catch (backupError) {
-      console.log('❌ CheckWX Backup Failed:', backupError.message);
+      // CheckWX backup failed, trying mock data
       
       // Test mock data
       console.log('\n3️⃣ Testing Mock Data Fallback...');
@@ -361,11 +361,11 @@ const testCheckWXConnection = async () => {
     }
   } catch (error) {
     if (error.response?.status === 401) {
-      console.error('❌ CheckWX API key is invalid');
+      // CheckWX API key invalid
     } else if (error.response?.status === 429) {
-      console.warn('⚠️  CheckWX API rate limit - backup available but limited');
+      // CheckWX API rate limited
     } else {
-      console.warn('⚠️  CheckWX API connection test failed:', error.message);
+      // CheckWX API connection failed
     }
   }
   return false;

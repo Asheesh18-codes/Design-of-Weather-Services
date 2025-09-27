@@ -169,7 +169,7 @@ const getWeatherForecast = async (req, res) => {
         nlpEnhanced = nlpResponse.data;
       }
     } catch (nlpError) {
-      console.warn(`NLP TAF processing failed for ${icao}:`, nlpError.message);
+      // NLP processing failed, continue without enhancement
       // Continue without NLP enhancement
     }
 

@@ -1,0 +1,561 @@
+{
+  "flight_plan": {
+    "departure": {
+      "icao": "KJFK",
+      "name": "John F. Kennedy International Airport",
+      "city": "New York, NY",
+      "coordinates": {
+        "lat": 40.6413,
+        "lon": -73.7781
+      }
+    },
+    "arrival": {
+      "icao": "KLAX",
+      "name": "Los Angeles International Airport", 
+      "city": "Los Angeles, CA",
+      "coordinates": {
+        "lat": 33.9425,
+        "lon": -118.4081
+      }
+    },
+    "route": "KJFK..KLAX",
+    "distance_nm": 2475,
+    "estimated_flight_time": "5h 30m",
+    "timestamp": "2025-09-27T14:30:00Z"
+  },
+  "departure_weather": {
+    "airport": "KJFK",
+    "metar": {
+      "raw": "METAR KJFK 271851Z 28014KT 10SM FEW250 24/18 A3012 RMK AO2 SLP203 T02440183",
+      "parsed": {
+        "station": "KJFK",
+        "observation_time": "2025-09-27T18:51:00Z",
+        "wind": {
+          "direction": 280,
+          "speed": 14,
+          "gust": null,
+          "unit": "KT"
+        },
+        "visibility": {
+          "distance": 10,
+          "unit": "SM"
+        },
+        "clouds": [
+          {
+            "coverage": "FEW",
+            "base": 25000,
+            "type": null
+          }
+        ],
+        "temperature": {
+          "celsius": 24,
+          "fahrenheit": 75
+        },
+        "dewpoint": {
+          "celsius": 18,
+          "fahrenheit": 64
+        },
+        "altimeter": {
+          "inhg": 30.12,
+          "mb": 1020
+        },
+        "conditions": "Clear skies, excellent visibility",
+        "flight_category": "VFR"
+      }
+    },
+    "taf": {
+      "raw": "TAF KJFK 271720Z 2718/2824 28012KT 10SM FEW250 FM2800 30015KT 10SM SCT200 FM2812 32018G25KT 10SM BKN180 TEMPO 2815/2820 BKN120",
+      "parsed": {
+        "station": "KJFK",
+        "issue_time": "2025-09-27T17:20:00Z",
+        "valid_period": {
+          "from": "2025-09-27T18:00:00Z",
+          "to": "2025-09-28T24:00:00Z"
+        },
+        "forecast_periods": [
+          {
+            "time_period": "2025-09-27T18:00:00Z to 2025-09-28T00:00:00Z",
+            "wind": {
+              "direction": 280,
+              "speed": 12,
+              "unit": "KT"
+            },
+            "visibility": {
+              "distance": 10,
+              "unit": "SM"
+            },
+            "clouds": [
+              {
+                "coverage": "FEW",
+                "base": 25000
+              }
+            ],
+            "flight_category": "VFR"
+          },
+          {
+            "time_period": "2025-09-28T00:00:00Z to 2025-09-28T12:00:00Z",
+            "wind": {
+              "direction": 300,
+              "speed": 15,
+              "unit": "KT"
+            },
+            "visibility": {
+              "distance": 10,
+              "unit": "SM"
+            },
+            "clouds": [
+              {
+                "coverage": "SCT",
+                "base": 20000
+              }
+            ],
+            "flight_category": "VFR"
+          },
+          {
+            "time_period": "2025-09-28T12:00:00Z to 2025-09-28T24:00:00Z",
+            "wind": {
+              "direction": 320,
+              "speed": 18,
+              "gust": 25,
+              "unit": "KT"
+            },
+            "visibility": {
+              "distance": 10,
+              "unit": "SM"
+            },
+            "clouds": [
+              {
+                "coverage": "BKN",
+                "base": 18000
+              }
+            ],
+            "flight_category": "VFR",
+            "tempo": {
+              "time_period": "2025-09-28T15:00:00Z to 2025-09-28T20:00:00Z",
+              "clouds": [
+                {
+                  "coverage": "BKN",
+                  "base": 12000
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "notams": [
+      {
+        "id": "KJFK-001-2025",
+        "issue_time": "2025-09-27T12:00:00Z",
+        "effective_time": "2025-09-27T22:00:00Z",
+        "expiry_time": "2025-09-28T06:00:00Z",
+        "type": "RUNWAY",
+        "subject": "RWY 04L/22R",
+        "condition": "CLSD",
+        "raw_text": "!JFK 09/043 JFK RWY 04L/22R CLSD 2509272200-2509280600",
+        "parsed": {
+          "facility": "KJFK",
+          "runway": "04L/22R",
+          "status": "Closed",
+          "reason": "Maintenance",
+          "impact": "Use alternate runways 04R/22L, 08L/26R, 08R/26L"
+        },
+        "severity": "MEDIUM"
+      },
+      {
+        "id": "KJFK-002-2025",
+        "issue_time": "2025-09-27T08:00:00Z",
+        "effective_time": "2025-09-27T18:00:00Z",
+        "expiry_time": "2025-09-30T18:00:00Z",
+        "type": "NAV_AID",
+        "subject": "ILS RWY 04L",
+        "condition": "OTS",
+        "raw_text": "!JFK 09/041 JFK ILS RWY 04L OTS 2509271800-2509301800",
+        "parsed": {
+          "facility": "KJFK",
+          "equipment": "ILS RWY 04L",
+          "status": "Out of Service",
+          "reason": "Maintenance",
+          "impact": "Use visual approach or ILS RWY 04R"
+        },
+        "severity": "LOW"
+      }
+    ]
+  },
+  "arrival_weather": {
+    "airport": "KLAX",
+    "metar": {
+      "raw": "METAR KLAX 271853Z 25008KT 10SM BKN015 21/19 A2990 RMK AO2 SLP128 T02110189",
+      "parsed": {
+        "station": "KLAX",
+        "observation_time": "2025-09-27T18:53:00Z",
+        "wind": {
+          "direction": 250,
+          "speed": 8,
+          "gust": null,
+          "unit": "KT"
+        },
+        "visibility": {
+          "distance": 10,
+          "unit": "SM"
+        },
+        "clouds": [
+          {
+            "coverage": "BKN",
+            "base": 1500,
+            "type": null
+          }
+        ],
+        "temperature": {
+          "celsius": 21,
+          "fahrenheit": 70
+        },
+        "dewpoint": {
+          "celsius": 19,
+          "fahrenheit": 66
+        },
+        "altimeter": {
+          "inhg": 29.90,
+          "mb": 1013
+        },
+        "conditions": "Broken clouds at 1,500 feet",
+        "flight_category": "MVFR"
+      }
+    },
+    "taf": {
+      "raw": "TAF KLAX 271735Z 2718/2824 25010KT 10SM BKN015 FM2722 27012KT 10SM SCT020 BKN250 FM2802 28008KT 10SM SCT025 TEMPO 2802/2808 BKN012",
+      "parsed": {
+        "station": "KLAX",
+        "issue_time": "2025-09-27T17:35:00Z",
+        "valid_period": {
+          "from": "2025-09-27T18:00:00Z",
+          "to": "2025-09-28T24:00:00Z"
+        },
+        "forecast_periods": [
+          {
+            "time_period": "2025-09-27T18:00:00Z to 2025-09-27T22:00:00Z",
+            "wind": {
+              "direction": 250,
+              "speed": 10,
+              "unit": "KT"
+            },
+            "visibility": {
+              "distance": 10,
+              "unit": "SM"
+            },
+            "clouds": [
+              {
+                "coverage": "BKN",
+                "base": 1500
+              }
+            ],
+            "flight_category": "MVFR"
+          },
+          {
+            "time_period": "2025-09-27T22:00:00Z to 2025-09-28T02:00:00Z",
+            "wind": {
+              "direction": 270,
+              "speed": 12,
+              "unit": "KT"
+            },
+            "visibility": {
+              "distance": 10,
+              "unit": "SM"
+            },
+            "clouds": [
+              {
+                "coverage": "SCT",
+                "base": 2000
+              },
+              {
+                "coverage": "BKN",
+                "base": 25000
+              }
+            ],
+            "flight_category": "VFR"
+          },
+          {
+            "time_period": "2025-09-28T02:00:00Z to 2025-09-28T24:00:00Z",
+            "wind": {
+              "direction": 280,
+              "speed": 8,
+              "unit": "KT"
+            },
+            "visibility": {
+              "distance": 10,
+              "unit": "SM"
+            },
+            "clouds": [
+              {
+                "coverage": "SCT",
+                "base": 2500
+              }
+            ],
+            "flight_category": "VFR",
+            "tempo": {
+              "time_period": "2025-09-28T02:00:00Z to 2025-09-28T08:00:00Z",
+              "clouds": [
+                {
+                  "coverage": "BKN",
+                  "base": 1200
+                }
+              ],
+              "flight_category": "MVFR"
+            }
+          }
+        ]
+      }
+    },
+    "notams": [
+      {
+        "id": "KLAX-001-2025",
+        "issue_time": "2025-09-27T10:00:00Z",
+        "effective_time": "2025-09-28T05:00:00Z",
+        "expiry_time": "2025-09-28T07:00:00Z",
+        "type": "TAXIWAY",
+        "subject": "TWY A",
+        "condition": "CLSD BTN TWY B AND TWY C",
+        "raw_text": "!LAX 09/057 LAX TWY A CLSD BTN TWY B AND TWY C 2509280500-2509280700",
+        "parsed": {
+          "facility": "KLAX",
+          "taxiway": "A between Taxiway B and Taxiway C",
+          "status": "Closed",
+          "reason": "Construction",
+          "impact": "Use alternate taxiways for ground movement"
+        },
+        "severity": "LOW"
+      },
+      {
+        "id": "KLAX-002-2025",
+        "issue_time": "2025-09-27T14:00:00Z",
+        "effective_time": "2025-09-27T16:00:00Z",
+        "expiry_time": "2025-09-28T08:00:00Z",
+        "type": "LIGHTING",
+        "subject": "RWY 25R ALSF-2",
+        "condition": "OTS",
+        "raw_text": "!LAX 09/062 LAX RWY 25R ALSF-2 OTS 2509271600-2509280800",
+        "parsed": {
+          "facility": "KLAX",
+          "equipment": "Runway 25R Approach Light System",
+          "status": "Out of Service",
+          "reason": "Equipment failure",
+          "impact": "Approach minimums may be affected"
+        },
+        "severity": "MEDIUM"
+      }
+    ]
+  },
+  "enroute_weather": {
+    "sigmets": [
+      {
+        "id": "SIGMET-CHARLIE-3",
+        "issue_time": "2025-09-27T17:45:00Z",
+        "valid_period": {
+          "from": "2025-09-27T18:00:00Z",
+          "to": "2025-09-27T22:00:00Z"
+        },
+        "area": "CENTRAL UNITED STATES",
+        "flight_information_region": "CHICAGO",
+        "raw_text": "CHIC SIGMET CHARLIE 3 VALID 271800/272200 CKCB- FROM 100 NW MSN TO 50 NE DSM TO 50 SE OMA TO 100 W MSN OCNL SVR TSTM MOVG FROM 27025KT TOPS TO FL450 HAIL TO 1 IN POSS",
+        "parsed": {
+          "phenomenon": "SEVERE THUNDERSTORMS",
+          "intensity": "OCCASIONAL SEVERE",
+          "area_coordinates": [
+            {"lat": 44.5, "lon": -91.2},
+            {"lat": 42.1, "lon": -92.8},
+            {"lat": 40.8, "lon": -95.1},
+            {"lat": 43.8, "lon": -92.5}
+          ],
+          "movement": {
+            "direction": 270,
+            "speed": 25,
+            "unit": "KT"
+          },
+          "tops": "FL450",
+          "hazards": [
+            "Hail up to 1 inch diameter",
+            "Severe turbulence",
+            "Lightning"
+          ],
+          "impact": "Severe icing and turbulence, avoid area"
+        },
+        "severity": "HIGH"
+      }
+    ],
+    "pireps": [
+      {
+        "id": "UA-001-2025",
+        "report_time": "2025-09-27T18:15:00Z",
+        "location": {
+          "station": "OMA",
+          "coordinates": {
+            "lat": 41.3,
+            "lon": -96.4
+          },
+          "distance_direction": "30 NE"
+        },
+        "aircraft_type": "B737",
+        "altitude": "FL350",
+        "raw_text": "UUA /OV OMA030015/TM 1815/FL350/TP B737/SK BKN180-220/TA M45/WV 28045/TB LGT-MOD/RM LTGICCCG",
+        "parsed": {
+          "report_type": "Urgent",
+          "position": "30 miles northeast of Omaha",
+          "time": "18:15Z",
+          "flight_level": 35000,
+          "aircraft": "Boeing 737",
+          "sky_conditions": "Broken clouds 18,000-22,000 feet",
+          "temperature": -45,
+          "wind": {
+            "direction": 280,
+            "speed": 45,
+            "unit": "KT"
+          },
+          "turbulence": "Light to Moderate",
+          "icing": null,
+          "remarks": "Lightning in clouds and cloud to ground",
+          "weather_phenomena": [
+            "Lightning in clouds",
+            "Cloud to ground lightning",
+            "Light to moderate turbulence"
+          ]
+        },
+        "relevance": "Route crosses this area at similar altitude",
+        "impact": "Expect moderate turbulence and lightning activity"
+      },
+      {
+        "id": "UA-002-2025",
+        "report_time": "2025-09-27T18:30:00Z",
+        "location": {
+          "station": "DEN",
+          "coordinates": {
+            "lat": 39.9,
+            "lon": -104.7
+          },
+          "distance_direction": "50 W"
+        },
+        "aircraft_type": "A320",
+        "altitude": "FL380",
+        "raw_text": "UA /OV DEN050270/TM 1830/FL380/TP A320/SK CLR/TA M52/WV 31055/TB NEG/IC NEG/RM SMOOTH RIDE",
+        "parsed": {
+          "report_type": "Routine",
+          "position": "50 miles west of Denver",
+          "time": "18:30Z",
+          "flight_level": 38000,
+          "aircraft": "Airbus A320",
+          "sky_conditions": "Clear",
+          "temperature": -52,
+          "wind": {
+            "direction": 310,
+            "speed": 55,
+            "unit": "KT"
+          },
+          "turbulence": "None",
+          "icing": "None",
+          "remarks": "Smooth ride",
+          "weather_phenomena": [
+            "Clear skies",
+            "No turbulence",
+            "No icing"
+          ]
+        },
+        "relevance": "Western portion of route shows good conditions",
+        "impact": "Smooth flying conditions expected west of Denver"
+      }
+    ]
+  },
+  "ai_analysis": {
+    "flight_recommendation": {
+      "overall_assessment": "PROCEED WITH CAUTION",
+      "departure_conditions": {
+        "status": "FAVORABLE",
+        "details": "Excellent VFR conditions at KJFK with clear skies and good visibility. Note runway 04L/22R closure and ILS outage on 04L.",
+        "recommendations": [
+          "Plan for departure on alternate runways",
+          "Brief visual approach procedures for runway 04R if needed",
+          "Good weather window for departure"
+        ]
+      },
+      "enroute_conditions": {
+        "status": "MODERATE RISK", 
+        "details": "SIGMET for severe thunderstorms in central US along route. Turbulence reported at FL350. Clear conditions reported west of Denver.",
+        "recommendations": [
+          "Plan route deviation around severe weather area near Omaha",
+          "Consider altitude change to avoid turbulence around FL350",
+          "Monitor weather updates for storm movement",
+          "Expect smooth conditions west of Denver at higher altitudes"
+        ]
+      },
+      "arrival_conditions": {
+        "status": "MARGINAL",
+        "details": "MVFR conditions at KLAX with broken clouds at 1,500 feet. Marine layer typical for LAX. Taxiway closures and approach light outage.",
+        "recommendations": [
+          "Brief instrument approach procedures",
+          "Expect possible approach delays due to MVFR conditions",
+          "Plan for ground delays due to taxiway closure",
+          "Conditions improving to VFR after 22:00Z"
+        ]
+      },
+      "alternate_airports": [
+        {
+          "icao": "KBUR",
+          "name": "Hollywood Burbank Airport",
+          "distance_nm": 25,
+          "reason": "Better weather conditions, VFR forecast"
+        },
+        {
+          "icao": "KLGB", 
+          "name": "Long Beach Airport",
+          "distance_nm": 22,
+          "reason": "Alternate in case of LAX delays"
+        }
+      ],
+      "fuel_considerations": {
+        "recommendation": "INCREASE FUEL LOAD",
+        "details": "Add extra fuel for potential weather deviations and arrival delays",
+        "suggested_additional_fuel": "45 minutes"
+      },
+      "timing_recommendations": {
+        "departure": "PROCEED AS PLANNED",
+        "arrival": "EXPECT DELAYS",
+        "details": "Departure conditions good. Arrival may experience approach delays due to MVFR conditions until evening."
+      }
+    },
+    "risk_assessment": {
+      "overall_risk": "MODERATE",
+      "risk_factors": [
+        {
+          "factor": "Severe Weather Enroute",
+          "severity": "HIGH",
+          "mitigation": "Route deviation planning required"
+        },
+        {
+          "factor": "MVFR Arrival Conditions", 
+          "severity": "MEDIUM",
+          "mitigation": "Instrument approach proficiency required"
+        },
+        {
+          "factor": "Airport Equipment Outages",
+          "severity": "LOW",
+          "mitigation": "Use alternate procedures and facilities"
+        }
+      ]
+    }
+  },
+  "generated_at": "2025-09-27T19:00:00Z",
+  "data_sources": {
+    "metar": "aviationweather.gov",
+    "taf": "aviationweather.gov", 
+    "notams": "faa.gov",
+    "sigmets": "aviationweather.gov",
+    "pireps": "aviationweather.gov",
+    "ai_analysis": "OpenAI GPT-4"
+  },
+  "validity": {
+    "metar": "Current observation",
+    "taf": "Valid for 30 hours from issue time",
+    "notams": "Valid during specified time periods",
+    "sigmets": "Valid for 4 hours from issue time", 
+    "pireps": "Recent reports within 2 hours",
+    "ai_analysis": "Based on current data at generation time"
+  }
+}
