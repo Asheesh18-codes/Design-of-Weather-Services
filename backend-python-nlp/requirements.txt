@@ -1,0 +1,42 @@
+# FastAPI and web server dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+
+# HTTP and API client libraries
+requests>=2.31.0
+httpx>=0.25.0
+
+# Environment and configuration
+python-dotenv>=1.0.0
+
+# Machine Learning and NLP - Windows compatible versions
+transformers>=4.36.0
+torch>=2.0.0,<3.0.0
+# Use flexible tokenizers version that can use pre-compiled wheels
+tokenizers>=0.13.0,<0.16.0
+
+# HuggingFace API integration - simplified
+huggingface-hub>=0.19.0
+
+# Data processing and utilities - flexible versions
+numpy>=1.24.0,<2.0.0
+pandas>=2.1.0,<3.0.0
+
+# Date and time utilities
+python-dateutil>=2.8.0
+
+# Logging and monitoring
+structlog>=23.0.0
+
+# Development and testing dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+
+# Minimal additional requirements for Windows compatibility
+typing-extensions>=4.8.0
+anyio>=3.7.0
+
+# Production server (alternative to uvicorn)
+# gunicorn==21.2.0
