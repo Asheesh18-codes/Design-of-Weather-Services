@@ -1,35 +1,22 @@
+# Dependencies
 node_modules/
+
+# Environment variables
 .env
 .env.example
+.env.local
 
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
-.Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
 
 # Virtual environments
 .venv/
 venv/
-ENV/
-env/
 
 # IDE
 .vscode/
@@ -41,3 +28,18 @@ env/
 .DS_Store
 Thumbs.db
 
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# Temporary folders
+tmp/
+temp/

@@ -71,12 +71,14 @@ cd Design-of-Weather-Services
 cp .env.example .env
 
 # Edit .env file with your API keys
-# WEATHER_API_KEY=your_checkwx_api_key_here
+# Required for CheckWX backup weather data:
+# CHECKWX_API_KEY=your_checkwx_api_key_here
 
 # Frontend environment for Mapbox
 cd frontend-react
 # Create .env file and add:  
 # VITE_MAPBOX_TOKEN=your_mapbox_access_token_here
+cd ..
 ```
 
 ### 3. Install Dependencies
@@ -96,6 +98,15 @@ npm install
 #### NLP Service (Python)
 ```bash
 cd ../backend-python-nlp
+
+# Activate virtual environment (recommended)
+# Windows:
+..\.venv\Scripts\activate
+
+# Linux/macOS:
+# source ../.venv/bin/activate
+
+# Install requirements
 pip install -r requirements.txt
 ```
 
@@ -168,8 +179,8 @@ Design-of-Weather-Services/
 PORT=5000
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
-PYTHON_NLP_URL=http://localhost:8000
-WEATHER_API_KEY=your_checkwx_api_key
+NLP_SERVICE_URL=http://localhost:8000
+CHECKWX_API_KEY=your_checkwx_api_key
 ```
 
 #### Frontend React (`.env`)
@@ -188,7 +199,7 @@ OPENAI_API_KEY=your_openai_key  # Optional for enhanced AI
 1. **CheckWX API** (Backup weather data)
    - Visit: https://api.checkwx.com
    - Sign up for free API key
-   - Add to `.env` as `WEATHER_API_KEY`
+   - Add to backend `.env` as `CHECKWX_API_KEY`
 
 2. **Mapbox API** (Interactive maps and visualization)
    - Visit: https://account.mapbox.com/
@@ -199,6 +210,18 @@ OPENAI_API_KEY=your_openai_key  # Optional for enhanced AI
    - Visit: https://platform.openai.com
    - Generate API key
    - Add to Python service environment
+
+## 📚 Documentation
+
+This project includes comprehensive documentation in the `/docs` folder:
+
+- **[API Documentation](docs/API.md)** - Complete API reference with examples
+- **[Installation Guide](docs/INSTALLATION.md)** - Detailed setup instructions  
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - System design and components
+- **[User Manual](docs/USER_MANUAL.md)** - Step-by-step user guide
+- **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - Contributing and development
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Production deployment
+- **[Demo Script](docs/demo-script.md)** - Presentation and demo scenarios
 
 ## 📚 API Endpoints
 
@@ -282,17 +305,22 @@ pip install -r requirements.txt --force-reinstall
 ```
 
 #### API Key Issues
-1. Verify CheckWX API key in `.env`
-2. Check API key permissions and limits
+1. Verify CheckWX API key in backend `.env` file
+2. Check API key permissions and limits  
 3. Test with curl: `curl -H "X-API-Key: YOUR_KEY" https://api.checkwx.com/metar/KJFK`
+4. Primary weather data works without API keys (aviationweather.gov)
 
 #### Python Module Errors
 ```bash
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-.venv\Scripts\activate     # Windows
-pip install -r requirements.txt
+# Activate the project's virtual environment
+# Windows:
+.venv\Scripts\activate
+
+# Linux/macOS:
+source .venv/bin/activate
+
+# Install/reinstall requirements
+pip install -r backend-python-nlp/requirements.txt
 ```
 
 ### Debug Mode
