@@ -1,9 +1,8 @@
 # Dependencies
 node_modules/
 
-# Environment variables
+# Environment variables (but keep .env.example tracked)
 .env
-.env.example
 .env.local
 
 # Python
