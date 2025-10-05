@@ -573,11 +573,6 @@ function extractExpiryDate(text) {
   return null;
 }
 
-function extractLocation(text) {
-  const match = text.match(/([A-Z]{4})/);
-  return match ? match[1] : 'UNKNOWN';
-}
-
 function extractCoordinates(text) {
   const match = text.match(/(\d{2})(\d{2})(\d{2})([NS])\s*(\d{3})(\d{2})(\d{2})([EW])/);
   if (match) {

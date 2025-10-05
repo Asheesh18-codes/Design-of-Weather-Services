@@ -1,6 +1,26 @@
 const request = require('supertest');
 const app = require('../server');
 
+// Global test setup and teardown
+let server;
+
+beforeAll(() => {
+  // Start server for testing
+  server = app.listen(0); // Use port 0 for random available port
+});
+
+afterAll(async () => {
+  // Clean up server and connections
+  if (server) {
+    await new Promise((resolve) => {
+      server.close(resolve);
+    });
+  }
+  
+  // Force exit any remaining handles
+  await new Promise(resolve => setTimeout(resolve, 100));
+});
+
 describe('Weather API Tests', () => {
   
   describe('POST /api/weather/metar', () => {

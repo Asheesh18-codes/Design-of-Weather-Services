@@ -7,8 +7,8 @@ import logging
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from root directory .env.example
-load_dotenv(dotenv_path="../../.env.example")
+# Load environment variables from root directory .env
+load_dotenv(dotenv_path="../.env")
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ class WeatherSummarizer:
         try:
             # Ensure environment variables are loaded from .env.example
             from dotenv import load_dotenv
-            load_dotenv(dotenv_path="../../.env.example", override=True)
+            load_dotenv(dotenv_path="../.env", override=True)
             
             if self.provider == "huggingface":
                 self.api_key = os.getenv('HF_TOKEN') or os.getenv('HUGGINGFACE_API_KEY')

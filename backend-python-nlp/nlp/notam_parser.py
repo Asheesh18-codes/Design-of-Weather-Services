@@ -149,13 +149,20 @@ class NOTAMParser:
             Structured NOTAM information dictionary
         """
         try:
+            # First extract airport code from NOTAM text if not provided
+            extracted_airport = self._extract_airport_code(notam_text)
+            if not airport_code and extracted_airport:
+                airport_code = extracted_airport
+                
             parsed = {
                 'raw_text': notam_text,
                 'airport_code': airport_code,
+                'airport': airport_code,  # Add for compatibility
                 'parsed_at': datetime.utcnow().isoformat() + 'Z',
                 'notam_id': self._extract_notam_id(notam_text),
                 'severity': self._classify_severity(notam_text),
                 'category': self._determine_category(notam_text),
+                'type': self._determine_category(notam_text),  # Add for compatibility
                 'affected_facilities': self._extract_facilities(notam_text),
                 'time_info': self._extract_time_information(notam_text),
                 'location': self._extract_location(notam_text),
@@ -165,6 +172,11 @@ class NOTAMParser:
                 'coordinates': self._extract_coordinates(notam_text),
                 'altitudes': self._extract_altitudes(notam_text)
             }
+            
+            # Add effective date fields for compatibility
+            time_info = parsed['time_info']
+            parsed['effective_from'] = time_info.get('effective_from')
+            parsed['effective_until'] = time_info.get('effective_until')
             
             # Add flight impact assessment
             parsed['flight_impact'] = self._assess_flight_impact(parsed)
@@ -196,6 +208,28 @@ class NOTAMParser:
             if match:
                 return match.group(1)
         
+        return None
+
+    def _extract_airport_code(self, text: str) -> Optional[str]:
+        """Extract airport code from NOTAM text"""
+        if not text:
+            return None
+            
+        # Look for A) section which contains airport code
+        a_section_match = re.search(r'A\)\s*([A-Z]{4})', text.upper())
+        if a_section_match:
+            return a_section_match.group(1)
+            
+        # Look for Q) section airport code (first 4 letters after Q))
+        q_section_match = re.search(r'Q\)\s*([A-Z]{4})', text.upper())
+        if q_section_match:
+            return q_section_match.group(1)
+            
+        # Look for any 4-letter ICAO code pattern
+        icao_match = re.search(r'\b([A-Z]{4})\b', text.upper())
+        if icao_match:
+            return icao_match.group(1)
+            
         return None
 
     def _classify_severity(self, text: str) -> str:

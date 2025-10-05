@@ -473,11 +473,35 @@ function generatePeriodSummary(period, severity) {
   return `${severity}: ${summary}`;
 }
 
+// Classify weather severity for a flight segment between two points
+function classifySegment(fromPoint, toPoint) {
+  // Simple classification based on basic weather conditions
+  // In a real implementation, this would analyze weather along the route
+  try {
+    // Mock severity classification for segment
+    const distance = Math.sqrt(
+      Math.pow(toPoint.lat - fromPoint.lat, 2) + 
+      Math.pow(toPoint.lon - fromPoint.lon, 2)
+    );
+    
+    // Simple heuristic: longer segments might have more varied conditions
+    if (distance > 10) {
+      return SEVERITY_LEVELS.SIGNIFICANT;
+    } else {
+      return SEVERITY_LEVELS.CLEAR;
+    }
+  } catch (error) {
+    console.error('Error classifying segment:', error);
+    return SEVERITY_LEVELS.CLEAR;
+  }
+}
+
 module.exports = {
   SEVERITY_LEVELS,
   classifyWeatherConditions,
   classifyForecast,
   classifyWaypoint,
+  classifySegment,
   getOverallSeverity,
   getRouteSeverity,
   compareSeverity,

@@ -8,7 +8,7 @@ require('dotenv').config();
 const API_ENDPOINTS = {
   aviationWeather: 'https://aviationweather.gov/data/api/',
   metarTaf: 'https://tgftp.nws.noaa.gov/data',
-  checkwx: 'https://api.checkwx.com' // CheckWX API backup service
+  checkwx: process.env.CHECKWX_API_URL || 'https://api.checkwx.com' // Use env var if set
 };
 
 // CheckWX API Configuration
@@ -21,6 +21,21 @@ const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes - increased to reduce API c
 
 // Simple in-memory cache
 const cache = new Map();
+
+// Utility: Check API endpoint health
+async function checkApiEndpointHealth(url, apiKey) {
+  try {
+    const response = await axios.get(url, {
+      headers: apiKey ? { 'X-API-Key': apiKey } : {},
+      timeout: REQUEST_TIMEOUT
+    });
+    console.log(`[API Health] Endpoint ${url} responded with status ${response.status}`);
+    return response.status === 200;
+  } catch (error) {
+    console.error(`[API Health] Endpoint ${url} failed:`, error.message);
+    return false;
+  }
+}
 
 // Fetch latest METAR for airport
 const getLatestMetar = async (icao) => {

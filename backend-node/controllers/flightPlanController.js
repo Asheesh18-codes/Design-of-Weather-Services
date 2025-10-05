@@ -90,6 +90,11 @@ const generate = async (req, res) => {
         }
       },
       waypoints: waypoints,
+      flightPlan: {
+        waypoints: waypoints,
+        distance: waypoints.length > 0 ? waypoints[waypoints.length - 1].cumulativeDistance : 0,
+        totalTime: waypoints.length > 0 ? waypoints[waypoints.length - 1].estimatedTime : "00:00:00"
+      },
       processedAt: new Date().toISOString()
     };
 
