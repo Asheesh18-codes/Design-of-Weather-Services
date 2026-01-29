@@ -53,6 +53,7 @@ app.get('/api/health', async (req, res) => {
   const health = {
     status: 'ok',
     timestamp: new Date().toISOString(),
+    database_mode: process.env.USE_DATABASE === 'true' ? 'PostgreSQL (Optimized)' : 'JSON File (Legacy)',
     services: {
       primary_weather_api: 'unknown',
       checkwx_backup_api: 'unknown',
