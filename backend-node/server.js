@@ -36,7 +36,6 @@ const corsOptions = {
       'http://localhost:3001',
       'https://design-of-weather-services-vercel.app',
       'https://design-of-weather-services.vercel.app',
-      'https://aviation-weather-briefing.vercel.app',
       process.env.FRONTEND_URL
     ].filter(Boolean);
     
