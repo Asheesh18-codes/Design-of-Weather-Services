@@ -17,12 +17,12 @@ class WeatherSummarizer:
     Intelligent weather summarizer using HuggingFace models for flight briefings
     """
 
-    def __init__(self, model="sshleifer/distilbart-cnn-12-6", provider="huggingface"):
+    def __init__(self, model="Falconsai/text_summarization", provider="huggingface"):
         """
         Initialize weather summarizer
 
         Args:
-            model: model name (default = DistilBART CNN)
+            model: model name (default = Falconsai text summarization)
             provider: "huggingface" or "llama"
         """
         self.model = model

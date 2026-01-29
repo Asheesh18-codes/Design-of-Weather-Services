@@ -1,8 +1,18 @@
 # Aviation Weather Services - Full Stack Startup Script (Windows PowerShell)
-# This script starts all three services: Node.js backend, Python NLP backend, and React frontend
+# This script starts all three services: Node.js backend, Python NLP backend, and frontend
 
 Write-Host "Starting Aviation Weather Services Full Stack..." -ForegroundColor Green
 Write-Host ""
+
+# Ask user which frontend to use
+Write-Host "Choose frontend to start:" -ForegroundColor Cyan
+Write-Host "1. Next.js Frontend (Port 3000) - New UI" -ForegroundColor White
+Write-Host "2. React Frontend (Port 5173) - Legacy UI" -ForegroundColor White
+$frontendChoice = Read-Host "Enter choice (1 or 2, default: 1)"
+
+if ([string]::IsNullOrWhiteSpace($frontendChoice)) {
+    $frontendChoice = "1"
+}
 
 # Function to start a process in a new window
 function Start-ServiceInNewWindow {
@@ -22,14 +32,24 @@ $pythonDir = Join-Path $PSScriptRoot "backend-python-nlp"
 $pythonExe = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 Start-ServiceInNewWindow "Python NLP Backend" "python app.py" $pythonDir
 
-# Start React Frontend (Port 5173)
-Write-Host "Starting React Frontend on port 5173..." -ForegroundColor Yellow
-$frontendDir = Join-Path $PSScriptRoot "frontend-react"
-Start-ServiceInNewWindow "React Frontend" "npm run dev" $frontendDir
+# Start Frontend based on user choice
+if ($frontendChoice -eq "1") {
+    Write-Host "Starting Next.js Frontend on port 3000..." -ForegroundColor Yellow
+    $frontendDir = Join-Path $PSScriptRoot "frontend"
+    Start-ServiceInNewWindow "Next.js Frontend" "npm run dev" $frontendDir
+    $frontendUrl = "http://localhost:3000"
+    $frontendName = "Next.js"
+} else {
+    Write-Host "Starting React Frontend on port 5173..." -ForegroundColor Yellow
+    $frontendDir = Join-Path $PSScriptRoot "frontend-react"
+    Start-ServiceInNewWindow "React Frontend" "npm run dev" $frontendDir
+    $frontendUrl = "http://localhost:5173"
+    $frontendName = "React"
+}
 
 Write-Host ""
 Write-Host "All services started successfully!" -ForegroundColor Green
-Write-Host "Frontend: http://localhost:5173" -ForegroundColor Cyan
+Write-Host "${frontendName} Frontend: ${frontendUrl}" -ForegroundColor Cyan
 Write-Host "Node.js API: http://localhost:5000" -ForegroundColor Cyan
 Write-Host "Python NLP API: http://localhost:8000" -ForegroundColor Cyan
 Write-Host ""

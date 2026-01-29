@@ -54,8 +54,8 @@ def get_weather_summarizer():
     global weather_summarizer
     if weather_summarizer is None:
         try:
-            weather_summarizer = WeatherSummarizer()
-            logger.info("WeatherSummarizer initialized successfully")
+            weather_summarizer = WeatherSummarizer(model="llama-3.1-8b-instant", provider="llama")
+            logger.info("WeatherSummarizer initialized successfully with Groq/Llama")
         except Exception as e:
             logger.error(f"Failed to initialize WeatherSummarizer: {e}")
             weather_summarizer = None
@@ -133,6 +133,46 @@ class TAFProcessResponse(BaseModel):
     recommendations: List[str]
     processed_by: str = "Python NLP Service"
     processed_at: str
+
+
+# Root endpoint
+@app.get("/")
+async def root():
+    """Root endpoint providing API information"""
+    return {
+        "service": "Aviation Weather NLP Service",
+        "version": "1.0.0",
+        "status": "running",
+        "timestamp": datetime.now().isoformat(),
+        "endpoints": {
+            "health": "/health",
+            "docs": "/docs",
+            "airport_info": "/api/airport-info",
+            "parse_notam": "/nlp/parse-notam",
+            "summarize": "/nlp/summarize",
+            "process_taf": "/nlp/process-taf"
+        }
+    }
+
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "services": {
+            "weather_summarizer": "initialized" if weather_summarizer is not None else "not initialized",
+            "notam_parser": "initialized" if notam_parser is not None else "not initialized",
+            "aviation_api": "initialized" if aviation_api is not None else "not initialized"
+        },
+        "environment": {
+            "port": os.getenv("PORT", "8000"),
+            "model_provider": os.getenv("MODEL_PROVIDER", "llama"),
+            "llama_model": os.getenv("LLAMA_MODEL", "llama-3.1-8b-instant")
+        }
+    }
 
 
 # Airport info endpoint

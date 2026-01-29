@@ -5,13 +5,20 @@
 
 const express = require('express');
 const router = express.Router();
-const airportService = require('../utils/airportService');
+
+// Use database-backed service if enabled, otherwise fallback to JSON
+const USE_DATABASE = process.env.USE_DATABASE === 'true';
+const airportService = USE_DATABASE 
+  ? require('../database/airportServiceDB')
+  : require('../utils/airportService');
+
+console.log(`🛫 Airport service mode: ${USE_DATABASE ? 'PostgreSQL Database' : 'JSON File'}`);
 
 /**
  * GET /api/airports/lookup/:code
  * Find airport by ICAO, IATA, or any code type
  */
-router.get('/lookup/:code', (req, res) => {
+router.get('/lookup/:code', async (req, res) => {
   try {
     const { code } = req.params;
     
@@ -22,7 +29,7 @@ router.get('/lookup/:code', (req, res) => {
       });
     }
 
-    const airport = airportService.findByCode(code);
+    const airport = await airportService.findByCode(code);
     
     if (!airport) {
       return res.status(404).json({
@@ -66,7 +73,7 @@ router.get('/lookup/:code', (req, res) => {
  * GET /api/airports/coordinates/:code
  * Get airport coordinates for mapping (lightweight response)
  */
-router.get('/coordinates/:code', (req, res) => {
+router.get('/coordinates/:code', async (req, res) => {
   try {
     const { code } = req.params;
     
@@ -76,7 +83,7 @@ router.get('/coordinates/:code', (req, res) => {
       });
     }
 
-    const coords = airportService.getCoordinates(code);
+    const coords = await airportService.getCoordinates(code);
     
     if (!coords) {
       return res.status(404).json({
@@ -104,7 +111,7 @@ router.get('/coordinates/:code', (req, res) => {
  * Get coordinates for multiple airports (route planning)
  * Body: { "airports": ["KJFK", "EGLL", "LFPG"] }
  */
-router.post('/route-coordinates', (req, res) => {
+router.post('/route-coordinates', async (req, res) => {
   try {
     const { airports } = req.body;
     
@@ -153,7 +160,7 @@ router.post('/route-coordinates', (req, res) => {
  * GET /api/airports/distance/:from/:to
  * Calculate distance between two airports
  */
-router.get('/distance/:from/:to', (req, res) => {
+router.get('/distance/:from/:to', async (req, res) => {
   try {
     const { from, to } = req.params;
     
@@ -164,7 +171,7 @@ router.get('/distance/:from/:to', (req, res) => {
       });
     }
 
-    const distance = airportService.calculateDistance(from, to);
+    const distance = await airportService.calculateDistance(from, to);
     
     if (!distance) {
       return res.status(404).json({
@@ -203,7 +210,7 @@ router.get('/distance/:from/:to', (req, res) => {
  * Search airports by name
  * Query params: ?q=kennedy&limit=5
  */
-router.get('/search', (req, res) => {
+router.get('/search', async (req, res) => {
   try {
     const { q, limit } = req.query;
     
@@ -221,7 +228,7 @@ router.get('/search', (req, res) => {
     }
 
     const maxLimit = Math.min(parseInt(limit) || 10, 50);
-    const results = airportService.searchByName(q, maxLimit);
+    const results = await airportService.searchByName(q, maxLimit);
     
     res.json({
       success: true,
@@ -243,7 +250,7 @@ router.get('/search', (req, res) => {
  * Find airports near a location
  * Query params: ?lat=40.6413&lon=-73.7781&radius=50&limit=10
  */
-router.get('/nearby', (req, res) => {
+router.get('/nearby', async (req, res) => {
   try {
     const { lat, lon, radius, limit } = req.query;
     
@@ -271,7 +278,7 @@ router.get('/nearby', (req, res) => {
       });
     }
 
-    const nearby = airportService.findNearby(latitude, longitude, searchRadius, maxLimit);
+    const nearby = await airportService.findNearby(latitude, longitude, searchRadius, maxLimit);
     
     res.json({
       success: true,

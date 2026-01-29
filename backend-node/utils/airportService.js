@@ -166,7 +166,7 @@ class AirportService {
   }
 
   /**
-   * Search airports by name (partial match)
+   * Search airports by name or code (partial match)
    * @param {string} query - Search query
    * @param {number} limit - Maximum number of results (default: 10)
    * @returns {Object[]} - Array of matching airports
@@ -177,19 +177,100 @@ class AirportService {
     }
 
     const searchTerm = query.toLowerCase().trim();
+    const searchTermUpper = query.toUpperCase().trim();
     const results = [];
+    const seen = new Set();
 
+    // First: Exact code matches (highest priority)
+    for (const airport of this.airports) {
+      const codes = [
+        airport.icao_code,
+        airport.iata_code,
+        airport.gps_code,
+        airport.local_code,
+        airport.ident
+      ].filter(Boolean);
+
+      for (const code of codes) {
+        if (code && code.toUpperCase() === searchTermUpper) {
+          const airportKey = airport.icao_code || airport.iata_code || airport.ident;
+          if (!seen.has(airportKey)) {
+            results.push({
+              code: airport.icao_code || airport.iata_code || airport.ident,
+              icao: airport.icao_code,
+              iata: airport.iata_code,
+              name: airport.name,
+              lat: airport.latitude_deg,
+              lon: airport.longitude_deg,
+              type: airport.type,
+              municipality: airport.municipality,
+              country: airport.iso_country
+            });
+            seen.add(airportKey);
+          }
+          break;
+        }
+      }
+      
+      if (results.length >= limit) {
+        return results;
+      }
+    }
+
+    // Second: Partial code matches
+    for (const airport of this.airports) {
+      const codes = [
+        airport.icao_code,
+        airport.iata_code,
+        airport.gps_code,
+        airport.local_code,
+        airport.ident
+      ].filter(Boolean);
+
+      for (const code of codes) {
+        if (code && code.toUpperCase().includes(searchTermUpper)) {
+          const airportKey = airport.icao_code || airport.iata_code || airport.ident;
+          if (!seen.has(airportKey)) {
+            results.push({
+              code: airport.icao_code || airport.iata_code || airport.ident,
+              icao: airport.icao_code,
+              iata: airport.iata_code,
+              name: airport.name,
+              lat: airport.latitude_deg,
+              lon: airport.longitude_deg,
+              type: airport.type,
+              municipality: airport.municipality,
+              country: airport.iso_country
+            });
+            seen.add(airportKey);
+          }
+          break;
+        }
+      }
+      
+      if (results.length >= limit) {
+        return results;
+      }
+    }
+
+    // Third: Name matches
     for (const airport of this.airports) {
       if (airport.name && airport.name.toLowerCase().includes(searchTerm)) {
-        results.push({
-          code: airport.icao_code || airport.iata_code || airport.ident,
-          name: airport.name,
-          lat: airport.latitude_deg,
-          lon: airport.longitude_deg,
-          type: airport.type,
-          municipality: airport.municipality,
-          country: airport.iso_country
-        });
+        const airportKey = airport.icao_code || airport.iata_code || airport.ident;
+        if (!seen.has(airportKey)) {
+          results.push({
+            code: airport.icao_code || airport.iata_code || airport.ident,
+            icao: airport.icao_code,
+            iata: airport.iata_code,
+            name: airport.name,
+            lat: airport.latitude_deg,
+            lon: airport.longitude_deg,
+            type: airport.type,
+            municipality: airport.municipality,
+            country: airport.iso_country
+          });
+          seen.add(airportKey);
+        }
 
         if (results.length >= limit) {
           break;
