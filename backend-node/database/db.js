@@ -10,18 +10,18 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 // Connection pool configuration
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'aviation_weather',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  
-  // Pool settings for performance
-  max: 20, // Maximum number of connections in pool
-  idleTimeoutMillis: 30000, // Close idle connections after 30s
-  connectionTimeoutMillis: 2000, // Fail fast if connection takes > 2s
-});
+// Supports both DATABASE_URL (for Render/production) and individual env vars (local dev)
+const pool = new Pool(
+  process.env.DATABASE_URL 
+    ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
+    : {
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '5432'),
+        database: process.env.DB_NAME || 'aviation_weather',
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || 'postgres',
+      }
+);
 
 // Handle pool errors
 pool.on('error', (err) => {
