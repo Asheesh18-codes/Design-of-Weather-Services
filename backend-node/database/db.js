@@ -12,12 +12,26 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 // Connection pool configuration
 // Supports both DATABASE_URL (Render/Aiven) and individual env vars (local dev)
 const useSsl = process.env.DB_SSL === 'true' || !!process.env.DATABASE_URL;
+const sslConfig = useSsl ? { ssl: { rejectUnauthorized: false } } : {};
+
+const rawDatabaseUrl = process.env.DATABASE_URL;
+let databaseUrl = rawDatabaseUrl;
+if (rawDatabaseUrl) {
+  try {
+    const parsedUrl = new URL(rawDatabaseUrl);
+    parsedUrl.searchParams.delete('sslmode');
+    parsedUrl.searchParams.delete('sslrootcert');
+    databaseUrl = parsedUrl.toString();
+  } catch (err) {
+    databaseUrl = rawDatabaseUrl;
+  }
+}
 
 const pool = new Pool(
-  process.env.DATABASE_URL
+  databaseUrl
     ? {
-        connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false },
+        connectionString: databaseUrl,
+        ...sslConfig,
       }
     : {
         host: process.env.DB_HOST || 'localhost',
@@ -25,7 +39,7 @@ const pool = new Pool(
         database: process.env.DB_NAME || 'aviation_weather',
         user: process.env.DB_USER || 'postgres',
         password: process.env.DB_PASSWORD || 'postgres',
-        ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+        ...sslConfig,
       }
 );
 
