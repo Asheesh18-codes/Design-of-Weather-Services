@@ -4,16 +4,6 @@
 Write-Host "Starting Aviation Weather Services Full Stack..." -ForegroundColor Green
 Write-Host ""
 
-# Ask user which frontend to use
-Write-Host "Choose frontend to start:" -ForegroundColor Cyan
-Write-Host "1. Next.js Frontend (Port 3000) - New UI" -ForegroundColor White
-Write-Host "2. React Frontend (Port 5173) - Legacy UI" -ForegroundColor White
-$frontendChoice = Read-Host "Enter choice (1 or 2, default: 1)"
-
-if ([string]::IsNullOrWhiteSpace($frontendChoice)) {
-    $frontendChoice = "1"
-}
-
 # Function to start a process in a new window
 function Start-ServiceInNewWindow {
     param($Title, $Command, $WorkingDirectory)
@@ -32,20 +22,12 @@ $pythonDir = Join-Path $PSScriptRoot "backend-python-nlp"
 $pythonExe = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 Start-ServiceInNewWindow "Python NLP Backend" "python app.py" $pythonDir
 
-# Start Frontend based on user choice
-if ($frontendChoice -eq "1") {
-    Write-Host "Starting Next.js Frontend on port 3000..." -ForegroundColor Yellow
-    $frontendDir = Join-Path $PSScriptRoot "frontend"
-    Start-ServiceInNewWindow "Next.js Frontend" "npm run dev" $frontendDir
-    $frontendUrl = "http://localhost:3000"
-    $frontendName = "Next.js"
-} else {
-    Write-Host "Starting React Frontend on port 5173..." -ForegroundColor Yellow
-    $frontendDir = Join-Path $PSScriptRoot "frontend-react"
-    Start-ServiceInNewWindow "React Frontend" "npm run dev" $frontendDir
-    $frontendUrl = "http://localhost:5173"
-    $frontendName = "React"
-}
+# Start Frontend (Next.js on Port 3000)
+Write-Host "Starting Next.js Frontend on port 3000..." -ForegroundColor Yellow
+$frontendDir = Join-Path $PSScriptRoot "frontend"
+Start-ServiceInNewWindow "Next.js Frontend" "npm run dev" $frontendDir
+$frontendUrl = "http://localhost:3000"
+$frontendName = "Next.js"
 
 Write-Host ""
 Write-Host "All services started successfully!" -ForegroundColor Green

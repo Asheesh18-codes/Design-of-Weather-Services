@@ -19,24 +19,6 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Aviation Weather Briefing',
   description: 'Premium aviation weather analysis and flight briefing platform with AI-powered insights',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
 }
 
 export default function RootLayout({
