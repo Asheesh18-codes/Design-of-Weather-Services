@@ -31,7 +31,7 @@ const corsOptions = {
     'http://localhost:5173', // Vite dev server
     'http://localhost:3001', // Alternative dev port
     'https://design-of-weather-services-vercel.app', // Vercel frontend
-    'https://design-of-weather-services.vercel.app', // Vercel frontend alt
+    'https://design-of-weather-services-asheesh18-codes-projects.vercel.app/', // Vercel frontend alt
     process.env.FRONTEND_URL || 'http://localhost:3000'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
