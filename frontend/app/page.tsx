@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ArrowRight, Cloud, MapPin, Zap, Lock, Database, Gauge } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { MapPreview } from '@/components/map-preview'
 
 export default function Home() {
   return (
@@ -91,11 +92,8 @@ export default function Home() {
 
           {/* Demo image placeholder */}
           <div className="mt-16 rounded-xl border border-border bg-card p-8 backdrop-blur-sm overflow-hidden transition-colors duration-300">
-            <div className="aspect-video bg-linear-to-br from-muted/50 to-muted rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <Cloud className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Dashboard Preview</p>
-              </div>
+            <div className="aspect-video bg-linear-to-br from-muted/50 to-muted rounded-lg flex items-center justify-center overflow-hidden">
+              <MapPreview />
             </div>
           </div>
         </div>
