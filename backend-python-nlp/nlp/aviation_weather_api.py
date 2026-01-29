@@ -20,17 +20,17 @@ class AviationWeatherAPI:
     
     def __init__(self):
         """Initialize Aviation Weather API client"""
-        self.base_url = "https://aviationweather.gov/data/api/"
+        self.base_url = "https://aviationweather.gov/data/api"
         self.timeout = 30  # seconds
         
         # API endpoint mappings
         self.endpoints = {
-            'metar': '/metar',
-            'taf': '/taf', 
-            'pirep': '/pirep',
-            'sigmet': '/isigmet',  # International SIGMETs
-            'airmet': '/airmet',
-            'notam': '/notam'
+            'metar': 'metar',
+            'taf': 'taf', 
+            'pirep': 'pirep',
+            'sigmet': 'isigmet',  # International SIGMETs
+            'airmet': 'airmet',
+            'notam': 'notam'
         }
         
         # Default parameters
@@ -72,7 +72,7 @@ class AviationWeatherAPI:
             logger.info(f"Fetching METAR data for stations: {station_ids}")
             
             response = requests.get(
-                f"{self.base_url}{self.endpoints['metar']}",
+                f"{self.base_url}/{self.endpoints['metar']}",
                 params=params,
                 timeout=self.timeout
             )
@@ -127,7 +127,7 @@ class AviationWeatherAPI:
             logger.info(f"Fetching TAF data for stations: {station_ids}")
             
             response = requests.get(
-                f"{self.base_url}{self.endpoints['taf']}",
+                f"{self.base_url}/{self.endpoints['taf']}",
                 params=params,
                 timeout=self.timeout
             )
@@ -189,7 +189,7 @@ class AviationWeatherAPI:
             logger.info(f"Fetching PIREP data (hours: {hours}, stations: {stations})")
             
             response = requests.get(
-                f"{self.base_url}{self.endpoints['pirep']}",
+                f"{self.base_url}/{self.endpoints['pirep']}",
                 params=params,
                 timeout=self.timeout
             )
@@ -300,7 +300,7 @@ class AviationWeatherAPI:
             logger.info(f"Fetching AIRMET data (hazard: {hazard or 'all'})")
             
             response = requests.get(
-                f"{self.base_url}{self.endpoints['airmet']}",
+                f"{self.base_url}/{self.endpoints['airmet']}",
                 params=params,
                 timeout=self.timeout
             )
@@ -348,7 +348,7 @@ class AviationWeatherAPI:
             logger.info(f"Fetching NOTAM data for stations: {station_ids}")
             
             response = requests.get(
-                f"{self.base_url}{self.endpoints['notam']}",
+                f"{self.base_url}/{self.endpoints['notam']}",
                 params=params,
                 timeout=self.timeout
             )
