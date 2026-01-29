@@ -10,16 +10,22 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 // Connection pool configuration
-// Supports both DATABASE_URL (for Render/production) and individual env vars (local dev)
+// Supports both DATABASE_URL (Render/Aiven) and individual env vars (local dev)
+const useSsl = process.env.DB_SSL === 'true' || !!process.env.DATABASE_URL;
+
 const pool = new Pool(
-  process.env.DATABASE_URL 
-    ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+      }
     : {
         host: process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.DB_PORT || '5432'),
         database: process.env.DB_NAME || 'aviation_weather',
         user: process.env.DB_USER || 'postgres',
         password: process.env.DB_PASSWORD || 'postgres',
+        ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
       }
 );
 

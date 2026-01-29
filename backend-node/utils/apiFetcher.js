@@ -6,7 +6,7 @@ require('dotenv').config();
 
 // Base URLs for various aviation weather APIs
 const API_ENDPOINTS = {
-  aviationWeather: 'https://aviationweather.gov/data/api/',
+  aviationWeather: 'https://aviationweather.gov/api/data',
   metarTaf: 'https://tgftp.nws.noaa.gov/data',
   checkwx: process.env.CHECKWX_API_URL || 'https://api.checkwx.com' // Use env var if set
 };
@@ -423,7 +423,7 @@ async function fetchMetarFromPrimary(icao) {
 
 async function fetchTafFromPrimary(icao) {
   // Try the correct aviationweather.gov API endpoint
-  const url = `${API_ENDPOINTS.aviationWeather}taf`;
+  const url = `${API_ENDPOINTS.aviationWeather}/taf`;
   const params = {
     ids: icao,
     format: 'json'

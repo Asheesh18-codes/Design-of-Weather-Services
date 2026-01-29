@@ -20,7 +20,7 @@ class AviationWeatherAPI:
     
     def __init__(self):
         """Initialize Aviation Weather API client"""
-        self.base_url = "https://aviationweather.gov/data/api"
+        self.base_url = "https://aviationweather.gov/api/data"
         self.timeout = 30  # seconds
         
         # API endpoint mappings
