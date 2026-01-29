@@ -2,6 +2,16 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Log configuration on startup
+console.log(`
+╔══════════════════════════════════════════════════╗
+║   AVIATION WEATHER BRIEFING API - STARTUP       ║
+║   Database Mode: ${process.env.USE_DATABASE === 'true' ? 'PostgreSQL (OPTIMIZED)' : 'JSON File (Legacy)'}
+║   Environment: ${process.env.NODE_ENV || 'development'}
+║   Timestamp: ${new Date().toISOString()}
+╚══════════════════════════════════════════════════╝
+`);
+
 // Import routes
 const weatherRoutes = require('./routes/weatherRoutes');
 const flightPlanRoutes = require('./routes/flightPlanRoutes');
