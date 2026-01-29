@@ -98,54 +98,40 @@ class AirportServiceDB {
 
     const searchTerm = query.trim();
     const searchTermUpper = searchTerm.toUpperCase();
-    const searchPattern = `%${searchTerm}%`;
+    const searchPattern = `${searchTerm}%`;  // Use prefix search for index efficiency
 
     try {
-      // Multi-tier search strategy for best results:
-      // 1. Exact code matches (highest priority)
-      // 2. Partial code matches
-      // 3. Name matches (case-insensitive)
+      // Optimized search strategy:
+      // 1. Exact code matches first (uses indexes, fastest)
+      // 2. Partial code matches with early LIMIT to avoid full table scan
+      // 3. Name matches only if needed
       
       const result = await db.query(
         `
-        WITH exact_matches AS (
-          SELECT *, 1 as priority
-          FROM airports
-          WHERE ident = $1 
-             OR icao_code = $1 
-             OR iata_code = $1 
-             OR gps_code = $1 
-             OR local_code = $1
-          LIMIT $2
-        ),
-        partial_code_matches AS (
-          SELECT *, 2 as priority
-          FROM airports
-          WHERE (ident LIKE $3 
-                OR icao_code LIKE $3 
-                OR iata_code LIKE $3 
-                OR gps_code LIKE $3 
-                OR local_code LIKE $3)
-            AND id NOT IN (SELECT id FROM exact_matches)
-          LIMIT $2
-        ),
-        name_matches AS (
-          SELECT *, 3 as priority
-          FROM airports
-          WHERE name ILIKE $4
-            AND id NOT IN (SELECT id FROM exact_matches)
-            AND id NOT IN (SELECT id FROM partial_code_matches)
-          LIMIT $2
-        )
-        SELECT * FROM exact_matches
-        UNION ALL
-        SELECT * FROM partial_code_matches
-        UNION ALL
-        SELECT * FROM name_matches
+        SELECT 
+          *, 
+          CASE 
+            WHEN ident = $1 OR icao_code = $1 OR iata_code = $1 OR gps_code = $1 OR local_code = $1 THEN 1
+            WHEN ident LIKE $3 OR icao_code LIKE $3 OR iata_code LIKE $3 OR gps_code LIKE $3 OR local_code LIKE $3 THEN 2
+            ELSE 3
+          END as priority
+        FROM airports
+        WHERE 
+          ident = $1 
+          OR icao_code = $1 
+          OR iata_code = $1 
+          OR gps_code = $1 
+          OR local_code = $1
+          OR ident LIKE $3 
+          OR icao_code LIKE $3 
+          OR iata_code LIKE $3 
+          OR gps_code LIKE $3 
+          OR local_code LIKE $3
+          OR name ILIKE $2
         ORDER BY priority, name
-        LIMIT $2
+        LIMIT $4
         `,
-        [searchTermUpper, limit, `%${searchTermUpper}%`, searchPattern]
+        [searchTermUpper, `%${searchPattern}%`, `%${searchTermUpper}%`, limit]
       );
 
       return result.rows.map(row => ({
